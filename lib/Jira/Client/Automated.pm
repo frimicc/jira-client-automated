@@ -78,7 +78,7 @@ use LWP::UserAgent;
 use HTTP::Request;
 use HTTP::Request::Common qw(GET POST PUT);
 
-=head2 new()
+=head2 new
 
     my $jira = JIRA::Client::Automated->new($url, $user, $password);
 
@@ -143,11 +143,11 @@ sub new {
     return $self;
 }
 
-=head2 create_issue()
+=head2 create_issue
 
     my $issue = $jira->create_issue($project, $type, $summary, $description);
 
-Creating a new issue requires the project key, type ("Bug", "Task", etc.), and a summary and description. Other fields that are on the new issue form could be supported by a subclass, but it's probably easier to use L</"update_issue()"> with JIRA's syntax for now.
+Creating a new issue requires the project key, type ("Bug", "Task", etc.), and a summary and description. Other fields that are on the new issue form could be supported by a subclass, but it's probably easier to use L</"update_issue"> with JIRA's syntax for now.
 
 Returns a hash containing the information about the new issue or dies if there is an error. See L</"JIRA ISSUE HASH FORMAT"> for details of the hash.
 
@@ -180,7 +180,7 @@ sub create_issue {
     return $new_issue;
 }
 
-=head2 update_issue()
+=head2 update_issue
 
     $jira->update_issue($key, $update_hash); 
     
@@ -208,7 +208,7 @@ sub update_issue {
     return;
 }
 
-=head2 get_issue()
+=head2 get_issue
 
     my $issue = $jira->get_issue($key);
 
@@ -257,7 +257,7 @@ sub _get_transition_id {
     return $t_id;
 }
 
-=head2 transition_issue()
+=head2 transition_issue
 
     $jira->transition_issue($key, $transition, $update_hash);
 
@@ -289,7 +289,7 @@ sub transition_issue {
     return;
 }
 
-=head2 close_issue()
+=head2 close_issue
 
     $jira->close_issue($key, $resolve, $message);
 
@@ -323,7 +323,7 @@ sub close_issue {
     return $self->transition_issue($key, 'Close Issue', $closing);
 }
 
-=head2 delete_issue()
+=head2 delete_issue
 
     $jira->delete_issue($key);
 
@@ -346,7 +346,7 @@ sub delete_issue {
     return;
 }
 
-=head2 create_comment()
+=head2 create_comment
 
     $jira->create_comment($key, $text);
 
@@ -377,13 +377,13 @@ sub create_comment {
 
 }
 
-=head2 search_issues()
+=head2 search_issues
 
     my @search_results = $jira->search_issues($jql, 1, 100); 
 
 You've used JQL before, when you did an "Advanced Search" in the JIRA web interface. That's the only way to search via the REST API. 
 
-This is a paged method. Pass in the starting result number and number of results per page and it will return issues a page at a time. If you know you want all of the results, you can use L</"all_search_results()"> instead. 
+This is a paged method. Pass in the starting result number and number of results per page and it will return issues a page at a time. If you know you want all of the results, you can use L</"all_search_results"> instead. 
 
 This method returns a list containing four values:
 
@@ -416,7 +416,7 @@ For example, to page through all results C<$max> at a time:
         $start += $max;
     } until (scalar(@$issues) < $max);
 
-(Or just use L</"all_search_results()"> instead.)
+(Or just use L</"all_search_results"> instead.)
 
 =cut
 
@@ -454,11 +454,11 @@ sub search_issues {
     return ($$results{total}, $$results{startAt}, $$results{maxResults}, $$results{issues});
 }
 
-=head2 all_search_results()
+=head2 all_search_results
 
     my @issues = $jira->all_search_results($jql, 1000); 
 
-Like L</"search_issues()">, but returns all the results. You can specify the maximum number to return, but no matter what, it can't return more than the value of jira.search.views.default.max for your JIRA installation. 
+Like L</"search_issues">, but returns all the results. You can specify the maximum number to return, but no matter what, it can't return more than the value of jira.search.views.default.max for your JIRA installation. 
 
 =cut
 
@@ -479,11 +479,11 @@ sub all_search_results {
     return \@all_results;
 }
 
-=head2 attach_file_to_issue()
+=head2 attach_file_to_issue
 
     $jira->attach_file_to_issue($key, $filename);
 
-This method does not let you attach a comment to the issue at the same time. You'll need to call L</"create_comment()"> for that.
+This method does not let you attach a comment to the issue at the same time. You'll need to call L</"create_comment"> for that.
 
 Watch out for file permissions! If the user running the script does not have permission to read the file it is trying to upload, you'll get weird errors.
 
@@ -508,7 +508,7 @@ sub attach_file_to_issue {
     return;
 }
 
-=head2 make_browse_url()
+=head2 make_browse_url
 
     my $url = $jira->make_browse_url($key);
     
