@@ -50,7 +50,7 @@ When you work with an issue in JIRA's REST API, it gives you a JSON file that fo
 
 L<https://developer.atlassian.com/display/JIRADEV/The+Shape+of+an+Issue+in+JIRA+REST+APIs>
 
-JIRA::Client::Automated tries to be nice to you and not make you deal directly with JSON. When you create a new issue, you can pass in just the pieces you want and L<create_issue()> will transform them to JSON for you. The same for closing and deleting issues. However there's not much I can do about updating or transitioning issues. Each JIRA installation will have different fields available for each issue type and transition screen and only you will know what they are. So in those cases you'll need to pass in an "update_hash" which will be transformed to the proper JSON by the method. 
+JIRA::Client::Automated tries to be nice to you and not make you deal directly with JSON. When you create a new issue, you can pass in just the pieces you want and L</"create_issue"> will transform them to JSON for you. The same for closing and deleting issues. However there's not much I can do about updating or transitioning issues. Each JIRA installation will have different fields available for each issue type and transition screen and only you will know what they are. So in those cases you'll need to pass in an "update_hash" which will be transformed to the proper JSON by the method. 
 
 An update_hash looks like this:
 
@@ -63,11 +63,11 @@ For example:
         { resolution => { name => "Resolved" } } 
     }
     
-If you do not read JIRA's documentation about their JSON format you will hurt yourself banging your head against your desk in frustration the first few times you try to use L<update_issue()>. Please RTFM. 
+If you do not read JIRA's documentation about their JSON format you will hurt yourself banging your head against your desk in frustration the first few times you try to use L</"update_issue">. Please RTFM. 
 
 Note that even though JIRA requires JSON, JIRA::Client::Automated will helpfully translate it to and from regular hashes for you. You only pass hashes to JIRA::Client::Automated, not direct JSON. 
 
-But, since you aren't going to read the documentation, I recommend connecting to your JIRA server and calling L<get_issue()> with a key you know exists and then dump the result. That'll get you started. 
+But, since you aren't going to read the documentation, I recommend connecting to your JIRA server and calling L</"get_issue"> with a key you know exists and then dump the result. That'll get you started. 
     
 =head1 METHODS
 
@@ -299,7 +299,7 @@ Resolution ("Fixed", "Won't Fix", etc.) is only required if the issue hasn't alr
 
 If you do not supply a comment, the default value is "Issue closed by script". 
 
-If your JIRA installation has extra required fields on the "Close Issue" screen then you'll want to use the more generic L<transition_issue()> call instead. 
+If your JIRA installation has extra required fields on the "Close Issue" screen then you'll want to use the more generic L</"transition_issue"> call instead. 
 
 =cut
 
