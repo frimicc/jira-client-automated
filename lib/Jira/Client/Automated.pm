@@ -483,7 +483,7 @@ sub all_search_results {
 
     $jira->attach_file_to_issue($key, $filename);
 
-This method does not let you attach a comment to the issue at the same time. You'll need to call L<"create_comment()"> for that.
+This method does not let you attach a comment to the issue at the same time. You'll need to call L</"create_comment()"> for that.
 
 Watch out for file permissions! If the user running the script does not have permission to read the file it is trying to upload, you'll get weird errors.
 
