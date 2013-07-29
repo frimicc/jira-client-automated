@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-package Jira::Client::Automated;
+package JIRA::Client::Automated;
 
 our $VERSION = 1.0;
 
@@ -18,7 +18,7 @@ version 1.0
 
     my $jira = JIRA::Client::Automated->new($url, $user, $password);
     my $issue = $jira->create_issue($project, $type, $summary, $description);
-    my @search_results = $jira->search_issues($jql, 1, 100); # query should be a single string of JQL
+    my $search_results = $jira->search_issues($jql, 1, 100); # query should be a single string of JQL
     my @issues = $jira->all_search_results($jql, 1000); # query should be a single string of JQL
     my $issue = $jira->get_issue($key);
     $jira->update_issue($key, $update_hash); # update_hash is { field => value, ... }
@@ -76,7 +76,7 @@ But, since you aren't going to read the documentation, I recommend connecting to
 use JSON;
 use LWP::UserAgent;
 use HTTP::Request;
-use HTTP::Request::Common qw(GET POST PUT);
+use HTTP::Request::Common qw(GET POST PUT DELETE);
 
 =head2 new
 
@@ -205,7 +205,7 @@ sub update_issue {
         die "Error updating JIRA issue $key " . $response->status_line();
     }
 
-    return;
+    return $key;
 }
 
 =head2 get_issue
@@ -286,7 +286,7 @@ sub transition_issue {
         die "Error with $t_name for JIRA issue $key: " . $response->status_line();
     }
 
-    return;
+    return $key;
 }
 
 =head2 close_issue
@@ -343,7 +343,7 @@ sub delete_issue {
         die "Error deleting JIRA issue $key " . $response->status_line();
     }
 
-    return;
+    return $key;
 }
 
 =head2 create_comment
@@ -374,7 +374,6 @@ sub create_comment {
     my $new_comment = $self->{_json}->decode($response->decoded_content());
 
     return $new_comment;
-
 }
 
 =head2 search_issues
@@ -385,25 +384,29 @@ You've used JQL before, when you did an "Advanced Search" in the JIRA web interf
 
 This is a paged method. Pass in the starting result number and number of results per page and it will return issues a page at a time. If you know you want all of the results, you can use L</"all_search_results"> instead. 
 
-This method returns a list containing four values:
+This method returns a hashref containing up to five values:
 
 =over 3
 
 =item 1.
 
-total number of results
+total => total number of results
 
 =item 2.
 
-result number for the first result
+start => result number for the first result
 
 =item 3.
 
-maximum number of results per page
+max => maximum number of results per page
 
 =item 4.
 
-an arrayref containing the actual found issues
+issues => an arrayref containing the actual found issues
+
+=item 5.
+
+errors => an arrayref containing error messages
 
 =back
 
@@ -445,20 +448,26 @@ sub search_issues {
     my $response = $self->{_ua}->request($request);
 
     if (!$response->is_success()) {
-        die "Error searching for $jql from $start for $max results " . $response->status_line();
+        if ($response->code() == 400) {
+            my $error_msg = $self->{_json}->decode($response->decoded_content());
+            return {total => 0, errors => $error_msg->{errorMessages}};
+        }
+        else {
+            die "Error searching for $jql from $start for $max results " . $response->status_line();
+        }
     }
 
     my $results = $self->{_json}->decode($response->decoded_content());
 
     # TODO: make this return a hash labeling the metadata instead of just a list.
-    return ($$results{total}, $$results{startAt}, $$results{maxResults}, $$results{issues});
+    return {total => $$results{total}, start => $$results{startAt}, max => $$results{maxResults}, issues => $$results{issues}};
 }
 
 =head2 all_search_results
 
     my @issues = $jira->all_search_results($jql, 1000); 
 
-Like L</"search_issues">, but returns all the results. You can specify the maximum number to return, but no matter what, it can't return more than the value of jira.search.views.default.max for your JIRA installation. 
+Like L</"search_issues">, but returns all the results as an array of issues. You can specify the maximum number to return, but no matter what, it can't return more than the value of jira.search.views.default.max for your JIRA installation. 
 
 =cut
 
@@ -468,15 +477,19 @@ sub all_search_results {
     my $start = 0;
     $max //= 100; # is a param for testing
     my $total = 0;
-    my (@all_results, $issues);
+    my (@all_results, @issues, $results);
 
     do {
-        ($total, $start, $max, $issues) = $self->search_issues($jql, $start, $max);
-        push @all_results, @$issues;
+        $results = $self->search_issues($jql, $start, $max);
+        if ($results->{errors}) {
+            die join "\n", @{$results->{errors}};
+        }
+        @issues = @{$results->{issues}};
+        push @all_results, @issues;
         $start += $max;
-    } until (scalar(@$issues) < $max);
+    } until (scalar(@issues) < $max);
 
-    return \@all_results;
+    return @all_results;
 }
 
 =head2 attach_file_to_issue
@@ -505,7 +518,9 @@ sub attach_file_to_issue {
         die "Error attaching $filename to JIRA issue $key: " . $response->status_line();
     }
 
-    return;
+    my $new_attachment = $self->{_json}->decode($response->decoded_content());
+
+    return $new_attachment;
 }
 
 =head2 make_browse_url
