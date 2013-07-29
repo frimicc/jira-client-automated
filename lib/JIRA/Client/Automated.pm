@@ -414,8 +414,12 @@ For example, to page through all results C<$max> at a time:
 
     my (@all_results, $issues);
     do {
-        ($total, $start, $max, $issues) = $self->search_issues($jql, $start, $max);
-        push @all_results, @$issues;
+        $results = $self->search_issues($jql, $start, $max);
+        if ($results->{errors}) {
+            die join "\n", @{$results->{errors}};
+        }
+        @issues = @{$results->{issues}};
+        push @all_results, @issues;
         $start += $max;
     } until (scalar(@$issues) < $max);
 
