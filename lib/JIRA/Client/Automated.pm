@@ -2,15 +2,10 @@ use strict;
 use warnings;
 package JIRA::Client::Automated;
 
-our $VERSION = 1.0;
 
 =head1 NAME
 
-JIRA::Client::Automated
-
-=head1 VERSION
-
-version 1.0
+JIRA::Client::Automated - A JIRA REST Client for automated scripts
 
 =head1 SYNOPSIS
 

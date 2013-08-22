@@ -1,10 +1,10 @@
 =head1 NAME
 
-JIRA::Client::Automated
+JIRA::Client::Automated - A JIRA REST Client for automated scripts
 
 =head1 VERSION
 
-version 1.0
+version 1.00
 
 =head1 SYNOPSIS
 
