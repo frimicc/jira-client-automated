@@ -1,4 +1,5 @@
 {{$NEXT}}
+    Updated distribution package for better CPANTS score.
 
 1.01      2013-08-22 21:47:59 America/Los_Angeles
     Fixed distribution metadata to require perl-5.10.0.
