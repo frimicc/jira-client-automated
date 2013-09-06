@@ -1,4 +1,6 @@
 {{$NEXT}}
+
+1.02      2013-09-06 13:03:47 America/Los_Angeles
     Updated distribution package for better CPANTS score.
     Fixed "use of uninitialized value $1 in substitution iterator" when using non-HTTPS URLs.
     Perltidy is my friend.
