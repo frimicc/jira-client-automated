@@ -1,6 +1,7 @@
 {{$NEXT}}
     Updated distribution package for better CPANTS score.
     Fixed "use of uninitialized value $1 in substitution iterator" when using non-HTTPS URLs.
+    Perltidy is my friend.
 
 1.01      2013-08-22 21:47:59 America/Los_Angeles
     Fixed distribution metadata to require perl-5.10.0.
