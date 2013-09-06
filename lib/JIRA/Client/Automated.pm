@@ -1,8 +1,8 @@
 use 5.010;
 use strict;
 use warnings;
-package JIRA::Client::Automated;
 
+package JIRA::Client::Automated;
 
 =head1 NAME
 
@@ -125,7 +125,13 @@ sub new {
     $auth_url =~ s{:/}{://};
 
     # authentication is screwy, so we need to use the in-url version
-    $auth_url =~ s|^http(s)?://|http$1://${user}:${password}\@|;
+    if ($auth_url =~ m|http://|) {
+        $auth_url =~ s|^http://|http://${user}:${password}\@|;
+    } elsif ($auth_url =~ m|https://|) {
+        $auth_url =~ s|^https://|https://${user}:${password}\@|;
+    } else {
+        die "URL for JIRA must be absolute, including 'http://' or 'https://'.";
+    }
 
     my $self = { url => $url, auth_url => $auth_url, };
     bless $self, $class;
@@ -228,7 +234,6 @@ sub get_issue {
     return $new_issue;
 }
 
-
 # Each issue could have a different workflow and therefore a different transition id for 'Close Issue', so we
 # have to look it up every time.
 sub _get_transition_id {
@@ -307,13 +312,11 @@ sub close_issue {
     my ($closing);
     if ($resolve) {
         $closing = {
-            update => { comment => [{ add => { body => $comment }, }] },
+            update => { comment    => [{ add => { body => $comment }, }] },
             fields => { resolution => { name => $resolve } },
         };
     } else {
-        $closing = {
-            update => { comment  => [{ add => { body => $comment }, }] },
-        };
+        $closing = { update => { comment => [{ add => { body => $comment }, }] }, };
     }
 
     return $self->transition_issue($key, 'Close Issue', $closing);
@@ -330,9 +333,9 @@ Deleting issues is for testing your JIRA code. In real situations you almost alw
 sub delete_issue {
     my ($self, $key) = @_;
 
-    my $uri        = "$self->{auth_url}issue/$key";
+    my $uri = "$self->{auth_url}issue/$key";
 
-    my $request = DELETE $uri;
+    my $request  = DELETE $uri;
     my $response = $self->{_ua}->request($request);
 
     if (!$response->is_success()) {
@@ -450,9 +453,8 @@ sub search_issues {
     if (!$response->is_success()) {
         if ($response->code() == 400) {
             my $error_msg = $self->{_json}->decode($response->decoded_content());
-            return {total => 0, errors => $error_msg->{errorMessages}};
-        }
-        else {
+            return { total => 0, errors => $error_msg->{errorMessages} };
+        } else {
             die "Error searching for $jql from $start for $max results " . $response->status_line();
         }
     }
@@ -460,7 +462,11 @@ sub search_issues {
     my $results = $self->{_json}->decode($response->decoded_content());
 
     # TODO: make this return a hash labeling the metadata instead of just a list.
-    return {total => $$results{total}, start => $$results{startAt}, max => $$results{maxResults}, issues => $$results{issues}};
+    return {
+        total  => $$results{total},
+        start  => $$results{startAt},
+        max    => $$results{maxResults},
+        issues => $$results{issues} };
 }
 
 =head2 all_search_results
@@ -482,9 +488,9 @@ sub all_search_results {
     do {
         $results = $self->search_issues($jql, $start, $max);
         if ($results->{errors}) {
-            die join "\n", @{$results->{errors}};
+            die join "\n", @{ $results->{errors} };
         }
-        @issues = @{$results->{issues}};
+        @issues = @{ $results->{issues} };
         push @all_results, @issues;
         $start += $max;
     } until (scalar(@issues) < $max);
