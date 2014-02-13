@@ -1,4 +1,6 @@
 {{$NEXT}}
+    Modified module to use authorization_basic() instead of in-URL passwords.
+    Based on a patch from Dominique Dumont.
 
 1.02      2013-09-06 13:03:47 America/Los_Angeles
     Updated distribution package for better CPANTS score.
