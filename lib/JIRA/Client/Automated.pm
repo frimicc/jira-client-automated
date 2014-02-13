@@ -26,7 +26,7 @@ JIRA::Client::Automated - A JIRA REST Client for automated scripts
 
 =head1 DESCRIPTION
 
-JIRA::Client::Automated is an adapter between any automated system and JIRA's REST API. This module is explicitly designed to easily create and close issues within a JIRA instance via automated scripts. 
+JIRA::Client::Automated is an adapter between any automated system and JIRA's REST API. This module is explicitly designed to easily create and close issues within a JIRA instance via automated scripts.
 
 For example, if you run nightly batch jobs, you can use JIRA::Client::Automated to have those jobs automatically create issues in JIRA for you when the script runs into errors. You can attach error log files to the issues and then they'll be waiting in someone's open issues list when they arrive at work the next day.
 
@@ -34,7 +34,7 @@ If you want to avoid creating the same issue more than once you can search JIRA 
 
 =head1 WORKING WITH JIRA
 
-Atlassian has made a very complete REST API for recent (> 5.0) versions of JIRA. By virtue of being complete it is also somewhat large and a little complex for the beginner. Reading their tutorials is *highly* recommended before you start making hashes to update or transition issues. 
+Atlassian has made a very complete REST API for recent (> 5.0) versions of JIRA. By virtue of being complete it is also somewhat large and a little complex for the beginner. Reading their tutorials is *highly* recommended before you start making hashes to update or transition issues.
 
 L<https://developer.atlassian.com/display/JIRADEV/JIRA+REST+APIs>
 
@@ -46,25 +46,25 @@ When you work with an issue in JIRA's REST API, it gives you a JSON file that fo
 
 L<https://developer.atlassian.com/display/JIRADEV/The+Shape+of+an+Issue+in+JIRA+REST+APIs>
 
-JIRA::Client::Automated tries to be nice to you and not make you deal directly with JSON. When you create a new issue, you can pass in just the pieces you want and L</"create_issue"> will transform them to JSON for you. The same for closing and deleting issues. However there's not much I can do about updating or transitioning issues. Each JIRA installation will have different fields available for each issue type and transition screen and only you will know what they are. So in those cases you'll need to pass in an "update_hash" which will be transformed to the proper JSON by the method. 
+JIRA::Client::Automated tries to be nice to you and not make you deal directly with JSON. When you create a new issue, you can pass in just the pieces you want and L</"create_issue"> will transform them to JSON for you. The same for closing and deleting issues. However there's not much I can do about updating or transitioning issues. Each JIRA installation will have different fields available for each issue type and transition screen and only you will know what they are. So in those cases you'll need to pass in an "update_hash" which will be transformed to the proper JSON by the method.
 
 An update_hash looks like this:
 
     { field => value, field2 => value2, ...}
-    
+
 For example:
 
     {
-        host_id => "example.com", 
-        { resolution => { name => "Resolved" } } 
+        host_id => "example.com",
+        { resolution => { name => "Resolved" } }
     }
-    
-If you do not read JIRA's documentation about their JSON format you will hurt yourself banging your head against your desk in frustration the first few times you try to use L</"update_issue">. Please RTFM. 
 
-Note that even though JIRA requires JSON, JIRA::Client::Automated will helpfully translate it to and from regular hashes for you. You only pass hashes to JIRA::Client::Automated, not direct JSON. 
+If you do not read JIRA's documentation about their JSON format you will hurt yourself banging your head against your desk in frustration the first few times you try to use L</"update_issue">. Please RTFM.
 
-But, since you aren't going to read the documentation, I recommend connecting to your JIRA server and calling L</"get_issue"> with a key you know exists and then dump the result. That'll get you started. 
-    
+Note that even though JIRA requires JSON, JIRA::Client::Automated will helpfully translate it to and from regular hashes for you. You only pass hashes to JIRA::Client::Automated, not direct JSON.
+
+But, since you aren't going to read the documentation, I recommend connecting to your JIRA server and calling L</"get_issue"> with a key you know exists and then dump the result. That'll get you started.
+
 =head1 METHODS
 
 =cut
@@ -96,9 +96,9 @@ Password for that user
 
 =back
 
-All three parameters are required. JIRA::Client::Automated must connect to the JIRA instance using I<some> username and password. I recommend setting up a special "auto" or "batch" username to use just for use by scripts. 
+All three parameters are required. JIRA::Client::Automated must connect to the JIRA instance using I<some> username and password. I recommend setting up a special "auto" or "batch" username to use just for use by scripts.
 
-If you are using Google Account integration, the username and password to use are the ones you set up at the very beginning of the registration process and then never used again because Google logged you in. 
+If you are using Google Account integration, the username and password to use are the ones you set up at the very beginning of the registration process and then never used again because Google logged you in.
 
 =cut
 
@@ -124,16 +124,11 @@ sub new {
     $auth_url =~ s{//}{/}g;
     $auth_url =~ s{:/}{://};
 
-    # authentication is screwy, so we need to use the in-url version
-    if ($auth_url =~ m|http://|) {
-        $auth_url =~ s|^http://|http://${user}:${password}\@|;
-    } elsif ($auth_url =~ m|https://|) {
-        $auth_url =~ s|^https://|https://${user}:${password}\@|;
-    } else {
+    if ($auth_url !~ m|https?://|) {
         die "URL for JIRA must be absolute, including 'http://' or 'https://'.";
     }
 
-    my $self = { url => $url, auth_url => $auth_url, };
+    my $self = { url => $url, auth_url => $auth_url, user => $user, password => $password };
     bless $self, $class;
 
     # cached UserAgent for talking to JIRA
@@ -171,6 +166,9 @@ sub create_issue {
     my $request = POST $uri,
       Content_Type => 'application/json',
       Content      => $issue_json;
+
+    $request->authorization_basic($self->{user}, $self->{password});
+
     my $response = $self->{_ua}->request($request);
 
     if (!$response->is_success()) {
@@ -184,8 +182,8 @@ sub create_issue {
 
 =head2 update_issue
 
-    $jira->update_issue($key, $update_hash); 
-    
+    $jira->update_issue($key, $update_hash);
+
 Updating an issue is one place where JIRA's REST API shows through. You pass in the issue key and update_hash with only the field changes you want in it. See L</"JIRA ISSUE HASH FORMAT">, above, for details about the format of the update_hash.
 
 =cut
@@ -201,6 +199,9 @@ sub update_issue {
     my $request = PUT $uri,
       Content_Type => 'application/json',
       Content      => $issue_json;
+
+    $request->authorization_basic($self->{user}, $self->{password});
+
     my $response = $self->{_ua}->request($request);
 
     if (!$response->is_success()) {
@@ -223,6 +224,9 @@ sub get_issue {
     my $uri = "$self->{auth_url}issue/$key";
 
     my $request = GET $uri, Content_Type => 'application/json';
+
+    $request->authorization_basic($self->{user}, $self->{password});
+
     my $response = $self->{_ua}->request($request);
 
     if (!$response->is_success()) {
@@ -241,6 +245,9 @@ sub _get_transition_id {
     my $uri = "$self->{auth_url}issue/$key/transitions";
 
     my $request = GET $uri, Content_Type => 'application/json';
+
+    $request->authorization_basic($self->{user}, $self->{password});
+
     my $response = $self->{_ua}->request($request);
 
     if (!$response->is_success()) {
@@ -262,9 +269,9 @@ sub _get_transition_id {
 
     $jira->transition_issue($key, $transition, $update_hash);
 
-Transitioning an issue is what happens when you click the button that says "Resolve Issue" or "Start Progress" on it. Doing this from code is harder, but JIRA::Client::Automated makes it as easy as possible. You pass this method the issue key, the name of the transition (spacing and capitalization matter), and an optional update_hash containing any fields on the transition screen that you want to update. 
+Transitioning an issue is what happens when you click the button that says "Resolve Issue" or "Start Progress" on it. Doing this from code is harder, but JIRA::Client::Automated makes it as easy as possible. You pass this method the issue key, the name of the transition (spacing and capitalization matter), and an optional update_hash containing any fields on the transition screen that you want to update.
 
-If you have required fields on the transition screen (such as "Resolution" for the "Resolve Issue" screen), you must pass those fields in as part of the update_hash or you will get an error from the server. See L</"JIRA ISSUE HASH FORMAT"> for the format of the update_hash. 
+If you have required fields on the transition screen (such as "Resolution" for the "Resolve Issue" screen), you must pass those fields in as part of the update_hash or you will get an error from the server. See L</"JIRA ISSUE HASH FORMAT"> for the format of the update_hash.
 
 =cut
 
@@ -281,6 +288,8 @@ sub transition_issue {
       Content_Type => 'application/json',
       Content      => $t_json;
 
+    $request->authorization_basic($self->{user}, $self->{password});
+
     my $response = $self->{_ua}->request($request);
 
     if (!$response->is_success()) {
@@ -294,13 +303,13 @@ sub transition_issue {
 
     $jira->close_issue($key, $resolve, $message);
 
-Pass in the resolution reason and an optional comment to close an issue. Using this method requires that the issue is is a status where it can use the "Close Issue" transition. If not, you will get an error from the server. 
+Pass in the resolution reason and an optional comment to close an issue. Using this method requires that the issue is is a status where it can use the "Close Issue" transition. If not, you will get an error from the server.
 
-Resolution ("Fixed", "Won't Fix", etc.) is only required if the issue hasn't already been resolved in an earlier transition. If you try to resolve an issue twice, you will get an error. 
+Resolution ("Fixed", "Won't Fix", etc.) is only required if the issue hasn't already been resolved in an earlier transition. If you try to resolve an issue twice, you will get an error.
 
-If you do not supply a comment, the default value is "Issue closed by script". 
+If you do not supply a comment, the default value is "Issue closed by script".
 
-If your JIRA installation has extra required fields on the "Close Issue" screen then you'll want to use the more generic L</"transition_issue"> call instead. 
+If your JIRA installation has extra required fields on the "Close Issue" screen then you'll want to use the more generic L</"transition_issue"> call instead.
 
 =cut
 
@@ -326,7 +335,7 @@ sub close_issue {
 
     $jira->delete_issue($key);
 
-Deleting issues is for testing your JIRA code. In real situations you almost always want to close unwanted issues with an "Oops!" resolution instead. 
+Deleting issues is for testing your JIRA code. In real situations you almost always want to close unwanted issues with an "Oops!" resolution instead.
 
 =cut
 
@@ -335,7 +344,9 @@ sub delete_issue {
 
     my $uri = "$self->{auth_url}issue/$key";
 
-    my $request  = DELETE $uri;
+    my $request = DELETE $uri;
+    $request->authorization_basic($self->{user}, $self->{password});
+
     my $response = $self->{_ua}->request($request);
 
     if (!$response->is_success()) {
@@ -364,6 +375,9 @@ sub create_comment {
     my $request = POST $uri,
       Content_Type => 'application/json',
       Content      => $comment_json;
+
+    $request->authorization_basic($self->{user}, $self->{password});
+
     my $response = $self->{_ua}->request($request);
 
     if (!$response->is_success()) {
@@ -377,11 +391,11 @@ sub create_comment {
 
 =head2 search_issues
 
-    my @search_results = $jira->search_issues($jql, 1, 100); 
+    my @search_results = $jira->search_issues($jql, 1, 100);
 
-You've used JQL before, when you did an "Advanced Search" in the JIRA web interface. That's the only way to search via the REST API. 
+You've used JQL before, when you did an "Advanced Search" in the JIRA web interface. That's the only way to search via the REST API.
 
-This is a paged method. Pass in the starting result number and number of results per page and it will return issues a page at a time. If you know you want all of the results, you can use L</"all_search_results"> instead. 
+This is a paged method. Pass in the starting result number and number of results per page and it will return issues a page at a time. If you know you want all of the results, you can use L</"all_search_results"> instead.
 
 This method returns a hashref containing up to five values:
 
@@ -448,6 +462,8 @@ sub search_issues {
       Content_Type => 'application/json',
       Content      => $query_json;
 
+    $request->authorization_basic($self->{user}, $self->{password});
+
     my $response = $self->{_ua}->request($request);
 
     if (!$response->is_success()) {
@@ -471,9 +487,9 @@ sub search_issues {
 
 =head2 all_search_results
 
-    my @issues = $jira->all_search_results($jql, 1000); 
+    my @issues = $jira->all_search_results($jql, 1000);
 
-Like L</"search_issues">, but returns all the results as an array of issues. You can specify the maximum number to return, but no matter what, it can't return more than the value of jira.search.views.default.max for your JIRA installation. 
+Like L</"search_issues">, but returns all the results as an array of issues. You can specify the maximum number to return, but no matter what, it can't return more than the value of jira.search.views.default.max for your JIRA installation.
 
 =cut
 
@@ -518,6 +534,8 @@ sub attach_file_to_issue {
       'X-Atlassian-Token' => 'nocheck',             # required by JIRA XSRF protection
       Content             => [file => [$filename],];
 
+    $request->authorization_basic($self->{user}, $self->{password});
+
     my $response = $self->{_ua}->request($request);
 
     if (!$response->is_success()) {
@@ -532,8 +550,8 @@ sub attach_file_to_issue {
 =head2 make_browse_url
 
     my $url = $jira->make_browse_url($key);
-    
-A helper method to make emails containing lists of bugs easier to use. This just appends the key to the URL for the JIRA server so that you can click on it and go directly to that issue. 
+
+A helper method to make emails containing lists of bugs easier to use. This just appends the key to the URL for the JIRA server so that you can click on it and go directly to that issue.
 
 =cut
 
