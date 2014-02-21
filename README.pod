@@ -13,6 +13,7 @@ version 1.03
     use JIRA::Client::Automated;
 
     my $jira = JIRA::Client::Automated->new($url, $user, $password);
+    my $jira_ua = $jira->ua(); # to add in a proxy
     my $issue = $jira->create_issue($project, $type, $summary, $description);
     my $search_results = $jira->search_issues($jql, 1, 100); # query should be a single string of JQL
     my @issues = $jira->all_search_results($jql, 1000); # query should be a single string of JQL
@@ -92,6 +93,16 @@ Password for that user
 All three parameters are required. JIRA::Client::Automated must connect to the JIRA instance using I<some> username and password. I recommend setting up a special "auto" or "batch" username to use just for use by scripts.
 
 If you are using Google Account integration, the username and password to use are the ones you set up at the very beginning of the registration process and then never used again because Google logged you in.
+
+=head2 ua
+
+    my $jira_ua = $jira->ua();
+
+Returns the L<LWP::UserAgent> object used to connect to the JIRA instance.
+Typically used to setup proxies or make other customizations to the UserAgent.
+For example:
+
+    $jira->ua()->env_proxy();
 
 =head2 create_issue
 

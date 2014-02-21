@@ -13,6 +13,7 @@ JIRA::Client::Automated - A JIRA REST Client for automated scripts
     use JIRA::Client::Automated;
 
     my $jira = JIRA::Client::Automated->new($url, $user, $password);
+    my $jira_ua = $jira->ua(); # to add in a proxy
     my $issue = $jira->create_issue($project, $type, $summary, $description);
     my $search_results = $jira->search_issues($jql, 1, 100); # query should be a single string of JQL
     my @issues = $jira->all_search_results($jql, 1000); # query should be a single string of JQL
@@ -143,15 +144,19 @@ sub new {
 
 =head2 ua
 
-Returns the L<LWP::UserAgent> object used to connect to remote site. Typically used to setup proxies like
+    my $jira_ua = $jira->ua();
 
-  $jira->ua->env_proxy;
+Returns the L<LWP::UserAgent> object used to connect to the JIRA instance.
+Typically used to setup proxies or make other customizations to the UserAgent.
+For example:
+
+    $jira->ua()->env_proxy();
 
 =cut
 
 sub ua {
     my $self = shift;
-    return $self->{_ua} ;
+    return $self->{_ua};
 }
 
 =head2 create_issue
