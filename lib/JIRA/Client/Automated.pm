@@ -141,6 +141,19 @@ sub new {
     return $self;
 }
 
+=head2 ua
+
+Returns the L<LWP::UserAgent> object used to connect to remote site. Typically used to setup proxies like
+
+  $jira->ua->env_proxy;
+
+=cut
+
+sub ua {
+    my $self = shift;
+    return $self->{_ua} ;
+}
+
 =head2 create_issue
 
     my $issue = $jira->create_issue($project, $type, $summary, $description);
