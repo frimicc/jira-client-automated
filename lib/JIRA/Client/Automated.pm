@@ -39,7 +39,7 @@ Atlassian has made a very complete REST API for recent (> 5.0) versions of JIRA.
 
 L<https://developer.atlassian.com/display/JIRADEV/JIRA+REST+APIs>
 
-This module is designed for the JIRA 5.2.11 REST API, as of March 2013, but it seems to work fine with JIRA 6.0 as well. Your mileage may vary with future versions.
+This module was designed for the JIRA 5.2.11 REST API, as of March 2013, but it works fine with JIRA 6.0 as well. Your mileage may vary with future versions.
 
 =head1 JIRA ISSUE HASH FORMAT
 
@@ -594,9 +594,19 @@ Please report bugs or feature requests to the author.
 
 Michael Friedman <frimicc@cpan.org>
 
+=head1 CREDITS
+
+Thanks very much to:
+
+=over 4
+
+=item Dominique Dumont <ddumont@cpan.org>
+
+=back
+
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2013 by Polyvore, Inc.
+This software is copyright (c) 2014 by Polyvore, Inc.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
