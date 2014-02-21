@@ -73,6 +73,7 @@ use JSON;
 use LWP::UserAgent;
 use HTTP::Request;
 use HTTP::Request::Common qw(GET POST PUT DELETE);
+use LWP::Protocol::https;
 
 =head2 new
 
