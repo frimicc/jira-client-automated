@@ -1,4 +1,6 @@
 {{$NEXT}}
+
+1.03      2014-02-21 20:50:45-08:00 America/Los_Angeles
     Modified module to use authorization_basic() instead of in-URL passwords.
     Added dependency on LWP::Protocol::https to allow secure connections.
     Added ua() function to allow users to add in proxy information.
