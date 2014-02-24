@@ -1,4 +1,7 @@
 {{$NEXT}}
+    Stupid case-insensitive filesystems and stupid implementations of git
+    that re-case directories upon download. grrrrrr
+    Re-uploading with "JIRA" in all caps so it'll work again. Sorry y'all!
 
 1.03      2014-02-21 20:50:45-08:00 America/Los_Angeles
     Modified module to use authorization_basic() instead of in-URL passwords.
