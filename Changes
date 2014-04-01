@@ -1,4 +1,6 @@
 {{$NEXT}}
+
+1.05      2014-03-31 19:24:19-07:00 America/Los_Angeles
     Added create_subtask() method to create subtasks easily.
     Refactored create_issue() to share code with create_subtask().
     (Based on a patch from Zhuang (John) Li <7humblerocks@gmail.com>.)
