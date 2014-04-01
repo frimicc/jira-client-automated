@@ -20,12 +20,7 @@ JIRA::Client::Automated - A JIRA REST Client for automated scripts
     my $issue = $jira->create_issue($project, $type, $summary, $description);
 
     # The simplest way to create a subtask
-    my $subtask = $jira->create_subtask(
-        project     => $project,
-        summary     => $summary,
-        description => $description,
-        parent_key  => $parent_key,
-    );
+    my $subtask = $jira->create_subtask($project, $summary, $description, $parent_key);
 
     # A complex but flexible way to create a new issue, story, task or subtask
     # if you know Jira issue hash structure well.
@@ -268,22 +263,25 @@ sub create_issue {
 =head2 create_subtask
 
     my $subtask = $jira->create_subtask($project, $summary, $description, $parent_key);
+    # or with optional subtask type
+    my $subtask = $jira->create_subtask($project, $summary, $description, $parent_key, 'sub-task');
 
-Creating a subtask.
+Creating a subtask. If your JIRA instance does not call subtasks "Sub-task" or "sub-task", then you will need to pass in your subtask type.
 
 Returns a hash containing the information about the new issue or dies if there is an error. See L</"JIRA ISSUE HASH FORMAT"> for details of the hash.
 
 =cut
 
 sub create_subtask {
-    my ($self, $project, $summary, $description, $parent_key) = @_;
+    my ($self, $project, $summary, $description, $parent_key, $type) = @_;
 
     # validate fields
     die "parent_key required" unless $parent_key;
+    $type ||= 'Sub-task';
 
     my $fields = {
         project     => { key => $project, },
-        issuetype   => { name => 'Sub-task' },
+        issuetype   => { name => $type },
         summary     => $summary,
         description => $description,
         parent      => { key  => $parent_key},

@@ -97,6 +97,12 @@ is($subtask->{fields}{summary}, "$JCA Test Subtask", 'create_subtask summary');
 is($subtask->{fields}{description}, "Created by $JCA Test Script automatically.", 'create_subtask description');
 ok($jira->delete_issue($sub_key), 'delete_issue subtask');
 
+ok($subtask = $jira->create_subtask($jira_project, "$JCA Test Subtask", "Created by $JCA Test Script automatically.", $issue->{key}, 'Sub-task'), 'create_subtask with type');
+isa_ok($subtask, 'HASH');
+ok($sub_key = $subtask->{key}, 'create_subtask with type key');
+ok($subtask = $jira->get_issue($sub_key), 'get_issue subtask with type');
+ok($jira->delete_issue($sub_key), 'delete_issue subtask');
+
 # Close an issue
 ok($jira->close_issue($key, 'Fixed', "Closed by $JCA Test Script"), 'close_issue');
 ok($issue = $jira->get_issue($key), 'get_issue to see closed');
