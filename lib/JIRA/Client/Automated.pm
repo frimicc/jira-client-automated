@@ -3,15 +3,10 @@ use strict;
 use warnings;
 
 package JIRA::Client::Automated;
-$JIRA::Client::Automated::VERSION = '1.05';
 
 =head1 NAME
 
 JIRA::Client::Automated - A JIRA REST Client for automated scripts
-
-=head1 VERSION
-
-version 1.05
 
 =head1 SYNOPSIS
 
@@ -32,20 +27,20 @@ version 1.05
         parent_key  => $parent_key,
     );
 
-    # A complex but flexible way to create a new issue, story, task or subtask 
+    # A complex but flexible way to create a new issue, story, task or subtask
     # if you know Jira issue hash structure well.
     my $issue = $jira->create({
         # Jira issue 'fields' hash
-        project     => { 
-            key => $project, 
+        project     => {
+            key => $project,
         },
-        issuetype   => { 
-            name => $type,      # "Bug", "Task", "SubTask", etc.
+        issuetype   => {
+            name => $type,      # "Bug", "Task", "Sub-task", etc.
         },
         summary     => $summary,
         description => $description,
         parent      => {        # only required for a subtask
-            key => $parent_key, 
+            key => $parent_key,
         },
         ...
     });
@@ -144,28 +139,28 @@ If you are using Google Account integration, the username and password to use ar
 =cut
 
 sub new {
-    my ( $class, $url, $user, $password ) = @_;
+    my ($class, $url, $user, $password) = @_;
 
-    unless ( defined $url && $url && defined $user && $user && defined $password && $password ) {
+    unless (defined $url && $url && defined $user && $user && defined $password && $password) {
         die "Need to specify url, username, and password to access JIRA.";
     }
 
-    unless ( $url =~ m{/$} ) {
+    unless ($url =~ m{/$}) {
         $url .= '/';
     }
 
     # make sure we have a usable API URL
     my $auth_url = $url;
-    unless ( $auth_url =~ m{/rest/api/} ) {
+    unless ($auth_url =~ m{/rest/api/}) {
         $auth_url .= '/rest/api/latest/';
     }
-    unless ( $auth_url =~ m{/$} ) {
+    unless ($auth_url =~ m{/$}) {
         $auth_url .= '/';
     }
     $auth_url =~ s{//}{/}g;
     $auth_url =~ s{:/}{://};
 
-    if ( $auth_url !~ m|https?://| ) {
+    if ($auth_url !~ m|https?://|) {
         die "URL for JIRA must be absolute, including 'http://' or 'https://'.";
     }
 
@@ -202,28 +197,28 @@ sub ua {
 
     my $issue = $jira->create({
         # Jira issue 'fields' hash
-        project     => { 
-            key => $project, 
+        project     => {
+            key => $project,
         },
-        issuetype   => { 
+        issuetype   => {
             name => $type,      # "Bug", "Task", "SubTask", etc.
         },
         summary     => $summary,
         description => $description,
         parent      => {        # only required for a subtask
-            key => $parent_key, 
+            key => $parent_key,
         },
         ...
     });
 
-Creating a new issue, story, task, subtask, etc.  
+Creating a new issue, story, task, subtask, etc.
 
 Returns a hash containing the information about the new issue or dies if there is an error. See L</"JIRA ISSUE HASH FORMAT"> for details of the hash.
 
 =cut
 
 sub create {
-    my ( $self, $fields ) = @_;
+    my ($self, $fields) = @_;
 
     my $issue = { fields => $fields };
 
@@ -231,18 +226,18 @@ sub create {
     my $uri        = "$self->{auth_url}issue/";
 
     my $request = POST $uri,
-        Content_Type => 'application/json',
-        Content      => $issue_json;
+      Content_Type => 'application/json',
+      Content      => $issue_json;
 
-    $request->authorization_basic( $self->{user}, $self->{password} );
+    $request->authorization_basic($self->{user}, $self->{password});
 
     my $response = $self->{_ua}->request($request);
 
-    if ( !$response->is_success() ) {
+    if (!$response->is_success()) {
         die "Error creating new JIRA issue $fields->{summary} " . $response->status_line();
     }
 
-    my $new_issue = $self->{_json}->decode( $response->decoded_content() );
+    my $new_issue = $self->{_json}->decode($response->decoded_content());
 
     return $new_issue;
 }
@@ -258,7 +253,7 @@ Returns a hash containing the information about the new issue or dies if there i
 =cut
 
 sub create_issue {
-    my ( $self, $project, $type, $summary, $description ) = @_;
+    my ($self, $project, $type, $summary, $description) = @_;
 
     my $fields = {
         summary     => $summary,
@@ -272,12 +267,7 @@ sub create_issue {
 
 =head2 create_subtask
 
-    my $subtask = $jira->create_subtask(
-        project     => $project, 
-        summary     => $summary, 
-        description => $description,
-        parent_key  => $parent_key,
-    );
+    my $subtask = $jira->create_subtask($project, $summary, $description, $parent_key);
 
 Creating a subtask.
 
@@ -286,17 +276,17 @@ Returns a hash containing the information about the new issue or dies if there i
 =cut
 
 sub create_subtask {
-    my ( $self, %args ) = @_;
+    my ($self, $project, $summary, $description, $parent_key) = @_;
 
     # validate fields
-    die "'parent_key' required" unless $args{parent_key};
+    die "parent_key required" unless $parent_key;
 
     my $fields = {
-        project     => { key  => $args{project}, },
-        issuetype   => { name => 'SubTask', },
-        summary     => $args{summary},
-        description => $args{description},
-        parent      => { key  => $args{parent_key} },
+        project     => { key => $project, },
+        issuetype   => { name => 'Sub-task' },
+        summary     => $summary,
+        description => $description,
+        parent      => { key  => $parent_key},
     };
 
     return $self->create($fields);
@@ -311,7 +301,7 @@ Updating an issue is one place where JIRA's REST API shows through. You pass in 
 =cut
 
 sub update_issue {
-    my ( $self, $key, $update_hash ) = @_;
+    my ($self, $key, $update_hash) = @_;
 
     my $issue = { fields => $update_hash };
 
@@ -319,14 +309,14 @@ sub update_issue {
     my $uri        = "$self->{auth_url}issue/$key";
 
     my $request = PUT $uri,
-        Content_Type => 'application/json',
-        Content      => $issue_json;
+      Content_Type => 'application/json',
+      Content      => $issue_json;
 
-    $request->authorization_basic( $self->{user}, $self->{password} );
+    $request->authorization_basic($self->{user}, $self->{password});
 
     my $response = $self->{_ua}->request($request);
 
-    if ( !$response->is_success() ) {
+    if (!$response->is_success()) {
         die "Error updating JIRA issue $key " . $response->status_line();
     }
 
@@ -342,20 +332,20 @@ You can get the details for any issue, given its key. This call returns a hash c
 =cut
 
 sub get_issue {
-    my ( $self, $key ) = @_;
+    my ($self, $key) = @_;
     my $uri = "$self->{auth_url}issue/$key";
 
     my $request = GET $uri, Content_Type => 'application/json';
 
-    $request->authorization_basic( $self->{user}, $self->{password} );
+    $request->authorization_basic($self->{user}, $self->{password});
 
     my $response = $self->{_ua}->request($request);
 
-    if ( !$response->is_success() ) {
+    if (!$response->is_success()) {
         die "Error getting JIRA issue $key " . $response->status_line();
     }
 
-    my $new_issue = $self->{_json}->decode( $response->decoded_content() );
+    my $new_issue = $self->{_json}->decode($response->decoded_content());
 
     return $new_issue;
 }
@@ -363,23 +353,23 @@ sub get_issue {
 # Each issue could have a different workflow and therefore a different transition id for 'Close Issue', so we
 # have to look it up every time.
 sub _get_transition_id {
-    my ( $self, $key, $t_name ) = @_;
+    my ($self, $key, $t_name) = @_;
     my $uri = "$self->{auth_url}issue/$key/transitions";
 
     my $request = GET $uri, Content_Type => 'application/json';
 
-    $request->authorization_basic( $self->{user}, $self->{password} );
+    $request->authorization_basic($self->{user}, $self->{password});
 
     my $response = $self->{_ua}->request($request);
 
-    if ( !$response->is_success() ) {
+    if (!$response->is_success()) {
         die "Error getting available transitions for JIRA issue $key " . $response->status_line();
     }
 
-    my $t_list = $self->{_json}->decode( $response->decoded_content() );
+    my $t_list = $self->{_json}->decode($response->decoded_content());
     my ($t_id);
-    for my $transition ( @{ $$t_list{transitions} } ) {
-        if ( $$transition{name} eq $t_name ) {
+    for my $transition (@{ $$t_list{transitions} }) {
+        if ($$transition{name} eq $t_name) {
             $t_id = $$transition{id};
         }
     }
@@ -398,23 +388,23 @@ If you have required fields on the transition screen (such as "Resolution" for t
 =cut
 
 sub transition_issue {
-    my ( $self, $key, $t_name, $t_hash ) = @_;
+    my ($self, $key, $t_name, $t_hash) = @_;
 
-    my $t_id = $self->_get_transition_id( $key, $t_name );
+    my $t_id = $self->_get_transition_id($key, $t_name);
     $$t_hash{transition} = { id => $t_id };
 
     my $t_json = $self->{_json}->encode($t_hash);
     my $uri    = "$self->{auth_url}issue/$key/transitions";
 
     my $request = POST $uri,
-        Content_Type => 'application/json',
-        Content      => $t_json;
+      Content_Type => 'application/json',
+      Content      => $t_json;
 
-    $request->authorization_basic( $self->{user}, $self->{password} );
+    $request->authorization_basic($self->{user}, $self->{password});
 
     my $response = $self->{_ua}->request($request);
 
-    if ( !$response->is_success() ) {
+    if (!$response->is_success()) {
         die "Error with $t_name for JIRA issue $key: " . $response->status_line();
     }
 
@@ -436,22 +426,21 @@ If your JIRA installation has extra required fields on the "Close Issue" screen 
 =cut
 
 sub close_issue {
-    my ( $self, $key, $resolve, $comment ) = @_;
+    my ($self, $key, $resolve, $comment) = @_;
 
     $comment //= 'Issue closed by script';
 
     my ($closing);
     if ($resolve) {
         $closing = {
-            update => { comment    => [      { add => { body => $comment }, } ] },
+            update => { comment    => [{ add => { body => $comment }, }] },
             fields => { resolution => { name => $resolve } },
         };
-    }
-    else {
-        $closing = { update => { comment => [ { add => { body => $comment }, } ] }, };
+    } else {
+        $closing = { update => { comment => [{ add => { body => $comment }, }] }, };
     }
 
-    return $self->transition_issue( $key, 'Close Issue', $closing );
+    return $self->transition_issue($key, 'Close Issue', $closing);
 }
 
 =head2 delete_issue
@@ -463,16 +452,16 @@ Deleting issues is for testing your JIRA code. In real situations you almost alw
 =cut
 
 sub delete_issue {
-    my ( $self, $key ) = @_;
+    my ($self, $key) = @_;
 
     my $uri = "$self->{auth_url}issue/$key";
 
     my $request = DELETE $uri;
-    $request->authorization_basic( $self->{user}, $self->{password} );
+    $request->authorization_basic($self->{user}, $self->{password});
 
     my $response = $self->{_ua}->request($request);
 
-    if ( !$response->is_success() ) {
+    if (!$response->is_success()) {
         die "Error deleting JIRA issue $key " . $response->status_line();
     }
 
@@ -488,7 +477,7 @@ You may use any valid JIRA markup in comment text. (This is handy for tables of 
 =cut
 
 sub create_comment {
-    my ( $self, $key, $text ) = @_;
+    my ($self, $key, $text) = @_;
 
     my $comment = { body => $text };
 
@@ -496,18 +485,18 @@ sub create_comment {
     my $uri          = "$self->{auth_url}issue/$key/comment";
 
     my $request = POST $uri,
-        Content_Type => 'application/json',
-        Content      => $comment_json;
+      Content_Type => 'application/json',
+      Content      => $comment_json;
 
-    $request->authorization_basic( $self->{user}, $self->{password} );
+    $request->authorization_basic($self->{user}, $self->{password});
 
     my $response = $self->{_ua}->request($request);
 
-    if ( !$response->is_success() ) {
+    if (!$response->is_success()) {
         die "Error creating new JIRA comment for $key : $text " . $response->status_line();
     }
 
-    my $new_comment = $self->{_json}->decode( $response->decoded_content() );
+    my $new_comment = $self->{_json}->decode($response->decoded_content());
 
     return $new_comment;
 }
@@ -569,7 +558,7 @@ For example, to page through all results C<$max> at a time:
 # Note: if $max is > 1000 (set by jira.search.views.default.max in
 # http://jira.example.com/secure/admin/ViewSystemInfo.jspa) then it'll be truncated to 1000 anyway.
 sub search_issues {
-    my ( $self, $jql, $start, $max ) = @_;
+    my ($self, $jql, $start, $max) = @_;
 
     my $query = {
         jql        => $jql,
@@ -582,24 +571,23 @@ sub search_issues {
     my $uri        = "$self->{auth_url}search/";
 
     my $request = POST $uri,
-        Content_Type => 'application/json',
-        Content      => $query_json;
+      Content_Type => 'application/json',
+      Content      => $query_json;
 
-    $request->authorization_basic( $self->{user}, $self->{password} );
+    $request->authorization_basic($self->{user}, $self->{password});
 
     my $response = $self->{_ua}->request($request);
 
-    if ( !$response->is_success() ) {
-        if ( $response->code() == 400 ) {
-            my $error_msg = $self->{_json}->decode( $response->decoded_content() );
+    if (!$response->is_success()) {
+        if ($response->code() == 400) {
+            my $error_msg = $self->{_json}->decode($response->decoded_content());
             return { total => 0, errors => $error_msg->{errorMessages} };
-        }
-        else {
+        } else {
             die "Error searching for $jql from $start for $max results " . $response->status_line();
         }
     }
 
-    my $results = $self->{_json}->decode( $response->decoded_content() );
+    my $results = $self->{_json}->decode($response->decoded_content());
 
     # TODO: make this return a hash labeling the metadata instead of just a list.
     return {
@@ -618,22 +606,22 @@ Like L</"search_issues">, but returns all the results as an array of issues. You
 =cut
 
 sub all_search_results {
-    my ( $self, $jql, $max ) = @_;
+    my ($self, $jql, $max) = @_;
 
     my $start = 0;
     $max //= 100; # is a param for testing
     my $total = 0;
-    my ( @all_results, @issues, $results );
+    my (@all_results, @issues, $results);
 
     do {
-        $results = $self->search_issues( $jql, $start, $max );
-        if ( $results->{errors} ) {
+        $results = $self->search_issues($jql, $start, $max);
+        if ($results->{errors}) {
             die join "\n", @{ $results->{errors} };
         }
         @issues = @{ $results->{issues} };
         push @all_results, @issues;
         $start += $max;
-    } until ( scalar(@issues) < $max );
+    } until (scalar(@issues) < $max);
 
     return @all_results;
 }
@@ -649,24 +637,24 @@ Watch out for file permissions! If the user running the script does not have per
 =cut
 
 sub attach_file_to_issue {
-    my ( $self, $key, $filename ) = @_;
+    my ($self, $key, $filename) = @_;
 
     my $uri = "$self->{auth_url}issue/$key/attachments";
 
     my $request = POST $uri,
-        Content_Type        => 'form-data',
-        'X-Atlassian-Token' => 'nocheck',               # required by JIRA XSRF protection
-        Content             => [ file => [$filename], ];
+      Content_Type        => 'form-data',
+      'X-Atlassian-Token' => 'nocheck',             # required by JIRA XSRF protection
+      Content             => [file => [$filename],];
 
-    $request->authorization_basic( $self->{user}, $self->{password} );
+    $request->authorization_basic($self->{user}, $self->{password});
 
     my $response = $self->{_ua}->request($request);
 
-    if ( !$response->is_success() ) {
+    if (!$response->is_success()) {
         die "Error attaching $filename to JIRA issue $key: " . $response->status_line();
     }
 
-    my $new_attachment = $self->{_json}->decode( $response->decoded_content() );
+    my $new_attachment = $self->{_json}->decode($response->decoded_content());
 
     return $new_attachment;
 }
@@ -680,7 +668,7 @@ A helper method to make emails containing lists of bugs easier to use. This just
 =cut
 
 sub make_browse_url {
-    my ( $self, $key ) = @_;
+    my ($self, $key) = @_;
     # use url + browse + key to synthesize URL
     return $self->{url} . 'browse/' . $key;
 }
@@ -708,6 +696,13 @@ Thanks very much to:
 =item Dominique Dumont <ddumont@cpan.org>
 
 =back
+
+=over 4
+
+=item Zhuang (John) Li <7humblerocks@gmail.com>
+
+=back
+
 
 =head1 COPYRIGHT AND LICENSE
 

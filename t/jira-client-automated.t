@@ -29,7 +29,7 @@ setenv JIRA_CLIENT_AUTOMATED_USER you
 setenv JIRA_CLIENT_AUTOMATED_PASSWORD '******'
 END_SKIP_TEXT
 
-skip $skip_text, 1 if (!($jira_server && $jira_project && $jira_user && $jira_password));  
+skip $skip_text, 1 if (!($jira_server && $jira_project && $jira_user && $jira_password));
 
 my $JCA = 'JIRA::Client::Automated';
 my ($jira, $issue, $key, @issues);
@@ -86,6 +86,16 @@ is($issue->{fields}{status}{name}, 'In Progress', 'transition_issue status');
 my $jql = "KEY = $key";
 ok(@issues = $jira->all_search_results($jql, 10), 'all_search_results');
 is($issues[0]->{key}, $key, 'all_search_results found issue');
+
+# Create a sub-task
+my ($subtask, $sub_key);
+ok($subtask = $jira->create_subtask($jira_project, "$JCA Test Subtask", "Created by $JCA Test Script automatically.", $issue->{key}), 'create_subtask');
+isa_ok($subtask, 'HASH');
+ok($sub_key = $subtask->{key}, 'create_subtask key');
+ok($subtask = $jira->get_issue($sub_key), 'get_issue subtask');
+is($subtask->{fields}{summary}, "$JCA Test Subtask", 'create_subtask summary');
+is($subtask->{fields}{description}, "Created by $JCA Test Script automatically.", 'create_subtask description');
+ok($jira->delete_issue($sub_key), 'delete_issue subtask');
 
 # Close an issue
 ok($jira->close_issue($key, 'Fixed', "Closed by $JCA Test Script"), 'close_issue');

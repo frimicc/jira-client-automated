@@ -1,4 +1,7 @@
 {{$NEXT}}
+    Added create_subtask() method to create subtasks easily.
+    Refactored create_issue() to share code with create_subtask().
+    (Based on a patch from Zhuang (John) Li <7humblerocks@gmail.com>.)
 
 1.04      2014-02-24 10:50:51-08:00 America/Los_Angeles
     Stupid case-insensitive filesystems and stupid implementations of git
