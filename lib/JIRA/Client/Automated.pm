@@ -436,31 +436,57 @@ sub get_issue {
     return $new_issue;
 }
 
-# Each issue could have a different workflow and therefore a different transition id for 'Close Issue', so we
-# have to look it up every time.
-sub _get_transition_id {
-    my ($self, $key, $t_name) = @_;
+
+sub _get_transitions {
+    my ($self, $key) = @_;
     my $uri = "$self->{auth_url}issue/$key/transitions";
 
     my $request = GET $uri, Content_Type => 'application/json';
 
-    $request->authorization_basic($self->{user}, $self->{password});
+    my $response = $self->_perform_request($request);
 
-    my $response = $self->{_ua}->request($request);
+    my $transitions = $self->{_json}->decode($response->decoded_content())->{transitions};
 
-    if (!$response->is_success()) {
-        die "Error getting available transitions for JIRA issue $key " . $response->status_line();
+    return $transitions;
+}
+
+
+# Each issue could have a different workflow and therefore a different
+# transition id for 'Close Issue', so we have to look it up every time.
+#
+# Also, since transition names can be freely edited ('Close', 'Close it!')
+# we also match against the destination status name, which is much more
+# likely to remain stable ('Closed'). This is low risk because transition
+# names are verbs and status names are nouns, so a clash is very unlikely,
+# or if they are the same the effect is the same ('Open').
+#
+# We also allow the transition names to be specified as an array of names
+# in which case the first one that matches either a transition or status is used.
+# This makes it easier for scripts to handle the migration of names
+# by allowing current and new names to be used so the later change in JIRA
+# config doesn't cause any breakage.
+
+sub _get_transition_id {
+    my ($self, $key, $t_name) = @_;
+
+    my $transitions = $self->_get_transitions($key);
+
+    my %trans_names  = map { $_->{name}     => $_ } @$transitions;
+    my %status_names = map { $_->{to}{name} => $_ } @$transitions;
+
+    my @names = (ref $t_name) ? @$t_name : ($t_name);
+    my @trans = map { $trans_names{$_} // $status_names{$_} } @names;
+    my $tran = (grep { defined } @trans)[0]; # use the first defined one
+
+    if (not defined $tran) {
+        my $r_names = join ", ", map { "'$_'" } @names;
+        my $t_names = join ", ", map { "'$_'" } sort keys %trans_names;
+        my $s_names = join ", ", map { "'$_'" } sort keys %status_names;
+        croak "$key has no transition or status called $r_names (available transitions: $t_names; status: $s_names)";
     }
 
-    my $t_list = $self->{_json}->decode($response->decoded_content());
-    my ($t_id);
-    for my $transition (@{ $$t_list{transitions} }) {
-        if ($$transition{name} eq $t_name) {
-            $t_id = $$transition{id};
-        }
-    }
-
-    return $t_id;
+    return $tran->{id} unless wantarray;
+    return ($tran->{id}, $tran);
 }
 
 
@@ -470,15 +496,36 @@ sub _get_transition_id {
 
 Transitioning an issue is what happens when you click the button that says
 "Resolve Issue" or "Start Progress" on it. Doing this from code is harder, but
-JIRA::Client::Automated makes it as easy as possible. You pass this method the
-issue key, the name of the transition (spacing and capitalization matter), and
-an optional update_hash containing any fields on the transition screen that you
-want to update.
+JIRA::Client::Automated makes it as easy as possible.
+
+You pass this method the issue key, the name of the transition or the target
+status (spacing and capitalization matter), and an optional update_hash
+containing any fields on the transition screen that you want to update.
 
 If you have required fields on the transition screen (such as "Resolution" for
 the "Resolve Issue" screen), you must pass those fields in as part of the
 update_hash or you will get an error from the server. See L</"JIRA ISSUE HASH
 FORMAT"> for the format of the update_hash.
+
+(Note: it appears that in some cases missing required fields may cause the
+transition to fail I<without> causing an error from the server. For example
+a field that's required but isn't configured to appear on the transition screen.)
+
+The provided $transition name is first matched against the available
+transitions for the $key issue ('Start Progress', 'Close Issue').
+If there's no match then the names is matched against the available target
+status names ('Open', 'Closed'). You can use whichever is most appropriate.
+For example, in your configuration the transition names might vary between
+different kinds of projects but the status names might be the same.
+In which case scripts that are meant to work across multiple projects
+might prefer to use the status names.
+
+The $transition parameter can also be specified as a reference to an array of
+names. In this case the first one that matches either a transition name or
+status name is used.  This makes it easier for scripts to work across multiple
+kinds of projects and/or handle the migration of names by allowing current and
+future names to be used, so the later change in JIRA config doesn't cause any
+breakage.
 
 =cut
 
@@ -531,7 +578,7 @@ sub close_issue {
     $closing->{fields} = { resolution => { name => $resolve } }
         if $resolve;
 
-    return $self->transition_issue($key, 'Close Issue', $closing);
+    return $self->transition_issue($key, [ 'Close Issue', 'Close' ], $closing);
 }
 
 

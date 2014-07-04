@@ -81,10 +81,20 @@ ok($issue = $jira->get_issue($key), 'get_issue to see attachment');
 is($issue->{fields}{attachment}[0]{filename}, $filename, 'attach_file_to_issue attachment');
 undef $tmp; # File::Temp unlinks the file when it goes out of scope
 
+# Transition tests
+throws_ok {
+    $jira->transition_issue($key, 'NoneSuch Foo');
+} qr/has no transition.*NoneSuch Foo/, 'transition_issue with unknown name';
+throws_ok {
+    $jira->transition_issue($key, [ 'NoneSuch Bar', 'NoneSuch Baz' ]);
+} qr/has no transition.*NoneSuch Bar.*NoneSuch Baz/, 'transition_issue with unknown names';
+
 # Transition an issue through its workflow
-ok($jira->transition_issue($key, 'Start Progress'), 'transition_issue');
+my $transition_alternatives = [ 'Start Progress', 'Add to backlog', 'Open' ];
+my $prev_status_name = $issue->{fields}{status}{name};
+ok($jira->transition_issue($key, $transition_alternatives), 'transition_issue');
 ok($issue = $jira->get_issue($key), 'get_issue to see transition');
-is($issue->{fields}{status}{name}, 'In Progress', 'transition_issue status');
+isnt($issue->{fields}{status}{name}, $prev_status_name, "transition_issue status (now $issue->{fields}{status}{name})");
 
 # Search for issues
 # complicated queries work too:
