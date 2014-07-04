@@ -104,6 +104,7 @@ use LWP::UserAgent;
 use HTTP::Request;
 use HTTP::Request::Common qw(GET POST PUT DELETE);
 use LWP::Protocol::https;
+use Carp;
 
 =head2 new
 
@@ -137,7 +138,7 @@ sub new {
     my ($class, $url, $user, $password) = @_;
 
     unless (defined $url && $url && defined $user && $user && defined $password && $password) {
-        die "Need to specify url, username, and password to access JIRA.";
+        croak "Need to specify url, username, and password to access JIRA";
     }
 
     unless ($url =~ m{/$}) {
@@ -156,7 +157,7 @@ sub new {
     $auth_url =~ s{:/}{://};
 
     if ($auth_url !~ m|https?://|) {
-        die "URL for JIRA must be absolute, including 'http://' or 'https://'.";
+        croak "URL for JIRA must be absolute, including 'http://' or 'https://'";
     }
 
     my $self = { url => $url, auth_url => $auth_url, user => $user, password => $password };
@@ -187,6 +188,39 @@ sub ua {
     my $self = shift;
     return $self->{_ua};
 }
+
+
+sub _handle_error_response {
+    my ($self, $response, $request) = @_;
+
+    my $msg = $response->status_line;
+    $msg .= sprintf " %s", $response->decoded_content
+        if $response->decoded_content;
+    $msg .= sprintf " (for request: %s)", $request->decoded_content
+        if $request->decoded_content;
+
+    croak sprintf "Unable to %s %s: %s",
+        $request->method, $request->uri->path, $msg;
+}
+
+
+sub _perform_request {
+    my ($self, $request, $handlers) = @_;
+
+    $request->authorization_basic($self->{user}, $self->{password});
+
+    my $response = $self->{_ua}->request($request);
+
+    return $response if $response->is_success();
+
+    $handlers ||= {};
+    my $handler = $handlers->{ $response->code } || sub {
+        return $self->_handle_error_response($response, $request);
+    };
+
+    return $handler->($response, $request, $self);
+}
+
 
 =head2 create
 
@@ -224,13 +258,7 @@ sub create {
       Content_Type => 'application/json',
       Content      => $issue_json;
 
-    $request->authorization_basic($self->{user}, $self->{password});
-
-    my $response = $self->{_ua}->request($request);
-
-    if (!$response->is_success()) {
-        die "Error creating new JIRA issue $fields->{summary} " . $response->status_line();
-    }
+    my $response = $self->_perform_request($request);
 
     my $new_issue = $self->{_json}->decode($response->decoded_content());
 
@@ -310,13 +338,7 @@ sub update_issue {
       Content_Type => 'application/json',
       Content      => $issue_json;
 
-    $request->authorization_basic($self->{user}, $self->{password});
-
-    my $response = $self->{_ua}->request($request);
-
-    if (!$response->is_success()) {
-        die "Error updating JIRA issue $key " . $response->status_line();
-    }
+    my $response = $self->_perform_request($request);
 
     return $key;
 }
@@ -335,13 +357,7 @@ sub get_issue {
 
     my $request = GET $uri, Content_Type => 'application/json';
 
-    $request->authorization_basic($self->{user}, $self->{password});
-
-    my $response = $self->{_ua}->request($request);
-
-    if (!$response->is_success()) {
-        die "Error getting JIRA issue $key " . $response->status_line();
-    }
+    my $response = $self->_perform_request($request);
 
     my $new_issue = $self->{_json}->decode($response->decoded_content());
 
@@ -375,6 +391,7 @@ sub _get_transition_id {
     return $t_id;
 }
 
+
 =head2 transition_issue
 
     $jira->transition_issue($key, $transition, $update_hash);
@@ -398,16 +415,11 @@ sub transition_issue {
       Content_Type => 'application/json',
       Content      => $t_json;
 
-    $request->authorization_basic($self->{user}, $self->{password});
-
-    my $response = $self->{_ua}->request($request);
-
-    if (!$response->is_success()) {
-        die "Error with $t_name for JIRA issue $key: " . $response->status_line();
-    }
+    my $response = $self->_perform_request($request);
 
     return $key;
 }
+
 
 =head2 close_issue
 
@@ -428,18 +440,15 @@ sub close_issue {
 
     $comment //= 'Issue closed by script';
 
-    my ($closing);
-    if ($resolve) {
-        $closing = {
-            update => { comment    => [{ add => { body => $comment }, }] },
-            fields => { resolution => { name => $resolve } },
-        };
-    } else {
-        $closing = { update => { comment => [{ add => { body => $comment }, }] }, };
-    }
+    my $closing = {
+        update => { comment => [{ add => { body => $comment }, }] }
+    };
+    $closing->{fields} = { resolution => { name => $resolve } }
+        if $resolve;
 
     return $self->transition_issue($key, 'Close Issue', $closing);
 }
+
 
 =head2 delete_issue
 
@@ -455,16 +464,12 @@ sub delete_issue {
     my $uri = "$self->{auth_url}issue/$key";
 
     my $request = DELETE $uri;
-    $request->authorization_basic($self->{user}, $self->{password});
 
-    my $response = $self->{_ua}->request($request);
-
-    if (!$response->is_success()) {
-        die "Error deleting JIRA issue $key " . $response->status_line();
-    }
+    my $response = $self->_perform_request($request);
 
     return $key;
 }
+
 
 =head2 create_comment
 
@@ -486,18 +491,13 @@ sub create_comment {
       Content_Type => 'application/json',
       Content      => $comment_json;
 
-    $request->authorization_basic($self->{user}, $self->{password});
-
-    my $response = $self->{_ua}->request($request);
-
-    if (!$response->is_success()) {
-        die "Error creating new JIRA comment for $key : $text " . $response->status_line();
-    }
+    my $response = $self->_perform_request($request);
 
     my $new_comment = $self->{_json}->decode($response->decoded_content());
 
     return $new_comment;
 }
+
 
 =head2 search_issues
 
@@ -572,17 +572,16 @@ sub search_issues {
       Content_Type => 'application/json',
       Content      => $query_json;
 
-    $request->authorization_basic($self->{user}, $self->{password});
+    my $response = $self->_perform_request($request, {
+        400 => sub { # pass-thru 400 responses for us to deal with below
+            my ($response, $request, $self) = @_;
+            return $response;
+        },
+    });
 
-    my $response = $self->{_ua}->request($request);
-
-    if (!$response->is_success()) {
-        if ($response->code() == 400) {
-            my $error_msg = $self->{_json}->decode($response->decoded_content());
-            return { total => 0, errors => $error_msg->{errorMessages} };
-        } else {
-            die "Error searching for $jql from $start for $max results " . $response->status_line();
-        }
+    if ($response->code == 400) {
+        my $error_msg = $self->{_json}->decode($response->decoded_content());
+        return { total => 0, errors => $error_msg->{errorMessages} };
     }
 
     my $results = $self->{_json}->decode($response->decoded_content());
@@ -594,6 +593,7 @@ sub search_issues {
         max    => $$results{maxResults},
         issues => $$results{issues} };
 }
+
 
 =head2 all_search_results
 
@@ -624,6 +624,7 @@ sub all_search_results {
     return @all_results;
 }
 
+
 =head2 attach_file_to_issue
 
     $jira->attach_file_to_issue($key, $filename);
@@ -644,18 +645,13 @@ sub attach_file_to_issue {
       'X-Atlassian-Token' => 'nocheck',             # required by JIRA XSRF protection
       Content             => [file => [$filename],];
 
-    $request->authorization_basic($self->{user}, $self->{password});
-
-    my $response = $self->{_ua}->request($request);
-
-    if (!$response->is_success()) {
-        die "Error attaching $filename to JIRA issue $key: " . $response->status_line();
-    }
+    my $response = $self->_perform_request($request);
 
     my $new_attachment = $self->{_json}->decode($response->decoded_content());
 
     return $new_attachment;
 }
+
 
 =head2 make_browse_url
 
@@ -670,6 +666,7 @@ sub make_browse_url {
     # use url + browse + key to synthesize URL
     return $self->{url} . 'browse/' . $key;
 }
+
 
 =head1 FAQ
 
