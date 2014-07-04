@@ -16,6 +16,8 @@ JIRA::Client::Automated - A JIRA REST Client for automated scripts
 
     my $jira_ua = $jira->ua(); # to add in a proxy
 
+    $jira->trace(1); # enable tracing of requests and responses
+
     # The simplest way to create an issue
     my $issue = $jira->create_issue($project, $type, $summary, $description);
 
@@ -201,9 +203,10 @@ sub new {
     return $self;
 }
 
+
 =head2 ua
 
-    my $jira_ua = $jira->ua();
+    my $ua = $jira->ua();
 
 Returns the L<LWP::UserAgent> object used to connect to the JIRA instance.
 Typically used to setup proxies or make other customizations to the UserAgent.
@@ -215,7 +218,25 @@ For example:
 
 sub ua {
     my $self = shift;
+    $self->{_ua} = shift if @_;
     return $self->{_ua};
+}
+
+
+=head2 trace
+
+    $jira->trace(1);       # enable
+    $jira->trace(0);       # disable
+    $trace = $jira->trace;
+
+When tracing is enabled each request and response is logged using carp.
+
+=cut
+
+sub trace {
+    my $self = shift;
+    $self->{_trace} = shift if @_;
+    return $self->{_trace};
 }
 
 
@@ -238,7 +259,17 @@ sub _perform_request {
 
     $request->authorization_basic($self->{user}, $self->{password});
 
+    if ($self->trace) {
+        carp sprintf "request %s %s: %s",
+            $request->method, $request->uri->path, $request->decoded_content//'';
+    }
+
     my $response = $self->{_ua}->request($request);
+
+    if ($self->trace) {
+        carp sprintf "response %s: %s",
+            $response->status_line, $response->decoded_content//'';
+    }
 
     return $response if $response->is_success();
 
