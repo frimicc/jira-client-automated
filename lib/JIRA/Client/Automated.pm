@@ -406,21 +406,44 @@ sub create_subtask {
     return $self->create($fields);
 }
 
+
 =head2 update_issue
 
-    $jira->update_issue($key, $update_hash);
+    $jira->update_issue($key, $field_update_hash, $update_verb_hash);
 
-Updating an issue is one place where JIRA's REST API shows through. You pass in
-the issue key and update_hash with only the field changes you want in it. See
-L</"JIRA ISSUE HASH FORMAT">, above, for details about the format of the
-update_hash.
+There are two ways to express the updates you want to make to an issue.
+
+For simple changes you pass $field_update_hash as a reference to a hash of
+field_name => new_value pairs. For example:
+
+    $jira->update_issue($key, { summary => $new_summary });
+
+That works for simple fields, but there are some, like comments, that can't be
+updated in this way. For them you need to use $update_verb_hash.
+
+The $update_verb_hash parameter allow you to express a series of specific
+operations (verbs) to be performed on each field. For example:
+
+    $jira->update_issue($key, undef, {
+        labels   => [ { remove => "test" }, { add => "another" } ],
+        comments => [ { remove => { id => 10001 } } ]
+    });
+
+The two forms of update can be combined in a single call.
+
+For more information see:
+
+    https://developer.atlassian.com/display/JIRADEV/JIRA+REST+API+Example+-+Edit+issues
+    https://developer.atlassian.com/display/JIRADEV/Updating+an+Issue+via+the+JIRA+REST+APIs
 
 =cut
 
 sub update_issue {
-    my ($self, $key, $update_hash) = @_;
+    my ($self, $key, $field_update_hash, $update_verb_hash) = @_;
 
-    my $issue = { fields => $update_hash };
+    my $issue = {};
+    $issue->{fields} = $field_update_hash if $field_update_hash;
+    $issue->{update} = $update_verb_hash  if $update_verb_hash;
 
     my $issue_json = $self->{_json}->encode($issue);
     my $uri        = "$self->{auth_url}issue/$key";
@@ -523,16 +546,9 @@ JIRA::Client::Automated makes it as easy as possible.
 
 You pass this method the issue key, the name of the transition or the target
 status (spacing and capitalization matter), and an optional update_hash
-containing any fields on the transition screen that you want to update.
+containing any fields that you want to update.
 
-If you have required fields on the transition screen (such as "Resolution" for
-the "Resolve Issue" screen), you must pass those fields in as part of the
-update_hash or you will get an error from the server. See L</"JIRA ISSUE HASH
-FORMAT"> for the format of the update_hash.
-
-(Note: it appears that in some cases missing required fields may cause the
-transition to fail I<without> causing an error from the server. For example
-a field that's required but isn't configured to appear on the transition screen.)
+=head3 Specifying The Transition
 
 The provided $transition name is first matched against the available
 transitions for the $key issue ('Start Progress', 'Close Issue').
@@ -549,6 +565,36 @@ status name is used.  This makes it easier for scripts to work across multiple
 kinds of projects and/or handle the migration of names by allowing current and
 future names to be used, so the later change in JIRA config doesn't cause any
 breakage.
+
+=head3 Specifying Updates
+
+If you have required fields on the transition screen (such as "Resolution" for
+the "Resolve Issue" screen), you must pass those fields in as part of the
+update_hash or you will get an error from the server. See L</"JIRA ISSUE HASH
+FORMAT"> for the format of the update_hash.
+
+(Note: it appears that in some obscure cases missing required fields may cause the
+transition to fail I<without> causing an error from the server. For example
+a field that's required but isn't configured to appear on the transition screen.)
+
+The $update_hash is a combination of the $field_update_hash and $update_verb_hash
+parameters used by the L</update_issue> method. Like this:
+
+    $update_hash = {
+        fields => $field_update_hash,
+        update => $update_verb_hash
+    };
+
+You can use it to express both simple field settings and more complex update
+operations. For example:
+
+    $jira->transition_issue($key, $transition, {
+        fields => { summary => $new_summary },
+        update => {
+            labels   => [ { remove => "test" }, { add => "another" } ],
+            comments => [ { remove => { id => 10001 } } ]
+        }
+    });
 
 =cut
 
@@ -573,7 +619,10 @@ sub transition_issue {
 
 =head2 close_issue
 
-    $jira->close_issue($key, $resolve, $message);
+    $jira->close_issue($key);
+    $jira->close_issue($key, $resolve);
+    $jira->close_issue($key, $resolve, $comment);
+    $jira->close_issue($key, $resolve, $comment, $update_hash);
 
 Pass in the resolution reason and an optional comment to close an issue. Using
 this method requires that the issue is is a status where it can use the "Close
@@ -585,23 +634,28 @@ twice, you will get an error.
 
 If you do not supply a comment, the default value is "Issue closed by script".
 
-If your JIRA installation has extra required fields on the "Close Issue" screen
-then you'll want to use the more generic L</"transition_issue"> call instead.
+The $update_hash can be used to set or edit the values of other fields.
+See L</transition_issue> for more details.
+
+This method is a wrapper for L</transition_issue>.
 
 =cut
 
 sub close_issue {
-    my ($self, $key, $resolve, $comment) = @_;
+    my ($self, $key, $resolve, $comment, $update_hash) = @_;
 
     $comment //= 'Issue closed by script';
 
-    my $closing = {
-        update => { comment => [{ add => { body => $comment }, }] }
+    $update_hash ||= {};
+
+    push @{$update_hash->{update}{comment}}, {
+        add => { body => $comment }
     };
-    $closing->{fields} = { resolution => { name => $resolve } }
+
+    $update_hash->{fields}{resolution} = { name => $resolve }
         if $resolve;
 
-    return $self->transition_issue($key, [ 'Close Issue', 'Close' ], $closing);
+    return $self->transition_issue($key, [ 'Close Issue', 'Close' ], $update_hash);
 }
 
 
