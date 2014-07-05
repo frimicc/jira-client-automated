@@ -340,32 +340,40 @@ sub create {
     return $new_issue;
 }
 
+
 =head2 create_issue
 
-    my $issue = $jira->create_issue($project, $type, $summary, $description);
+    my $issue = $jira->create_issue($project, $type, $summary, $description, $fields);
 
 Creating a new issue requires the project key, type ("Bug", "Task", etc.), and
-a summary and description. Other fields that are on the new issue form could be
-supported by a subclass, but it's probably easier to use L</"update_issue">
-with JIRA's syntax for now.
+a summary and description.
 
-Returns a hash containing the information about the new issue or dies if there
-is an error. See L</"JIRA ISSUE HASH FORMAT"> for details of the hash.
+The optional $fields parameter can be used to pass a reference to a hash of
+extra fields to be set when the issue is created, which avoids the need for a
+separate L</update_issue> call. For example:
+
+    $jira->create_issue($project, $type, $summary, $description, {
+        labels => [ "foo", "bar" ]
+    });
+
+This method calls L</create> and return the same hash reference that it does.
 
 =cut
 
 sub create_issue {
-    my ($self, $project, $type, $summary, $description) = @_;
+    my ($self, $project, $type, $summary, $description, $fields) = @_;
 
-    my $fields = {
+    my $create_fields = {
+        %{ $fields || {} },
         summary     => $summary,
         description => $description,
         issuetype   => { name => $type, },
         project     => { key => $project, },
     };
 
-    return $self->create($fields);
+    return $self->create($create_fields);
 }
+
 
 =head2 create_subtask
 

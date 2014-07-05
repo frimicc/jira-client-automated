@@ -52,12 +52,19 @@ throws_ok {
 # --- read-only tests first
 
 # Create an issue
-ok($issue = $jira->create_issue($jira_project, 'Bug', "$JCA Test Script", "Created by $JCA Test Script automatically."), 'create_issue');
+$issue = $jira->create_issue(
+    $jira_project, 'Bug',
+    "$JCA Test Script",
+    "Created by $JCA Test Script automatically.",
+    { labels => [ "Commentary" ] }
+);
+ok($issue, 'create_issue');
 isa_ok($issue, 'HASH');
 ok($key = $issue->{key}, 'create_issue key');
 ok($issue = $jira->get_issue($key), 'get_issue');
 is($issue->{fields}{summary}, "$JCA Test Script", 'create_issue summary');
 is($issue->{fields}{description}, "Created by $JCA Test Script automatically.", 'create_issue description');
+is($issue->{fields}{labels}[0], "Commentary", 'create_issue labels');
 
 # Comment on an issue
 ok($jira->create_comment($key, "Comment from $JCA Test Script."),  'create_comment');
