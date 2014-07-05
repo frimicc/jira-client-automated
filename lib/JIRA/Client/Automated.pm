@@ -1,8 +1,9 @@
+package JIRA::Client::Automated;
+
 use 5.010;
 use strict;
 use warnings;
 
-package JIRA::Client::Automated;
 
 =head1 NAME
 
@@ -45,6 +46,7 @@ JIRA::Client::Automated - A JIRA REST Client for automated scripts
 
     my $search_results = $jira->search_issues($jql, 1, 100); # query should be a single string of JQL
     my @issues = $jira->all_search_results($jql, 1000); # query should be a single string of JQL
+
     my $issue = $jira->get_issue($key);
 
     $jira->update_issue($key, $update_hash); # update_hash is { field => value, ... }
@@ -53,8 +55,9 @@ JIRA::Client::Automated - A JIRA REST Client for automated scripts
 
     $jira->transition_issue($key, $transition, $transition_hash); # transition_hash is { field => value, ... }
 
-    $jira->close_issue($key, $resolve, $message); # resolve is the resolution value
+    $jira->close_issue($key, $resolve, $comment); # resolve is the resolution value
     $jira->delete_issue($key);
+
 
 =head1 DESCRIPTION
 
@@ -93,15 +96,16 @@ L<https://developer.atlassian.com/display/JIRADEV/The+Shape+of+an+Issue+in+JIRA+
 JIRA::Client::Automated tries to be nice to you and not make you deal directly
 with JSON. When you create a new issue, you can pass in just the pieces you
 want and L</"create_issue"> will transform them to JSON for you. The same for
-closing and deleting issues. However there's not much I can do about updating
-or transitioning issues. Each JIRA installation will have different fields
-available for each issue type and transition screen and only you will know what
-they are. So in those cases you'll need to pass in an "update_hash" which will
-be transformed to the proper JSON by the method.
+closing and deleting issues.
+
+Updating and transitioning issues is more complex.  Each JIRA installation will
+have different fields available for each issue type and transition screen and
+only you will know what they are. So in those cases you'll need to pass in an
+"update_hash" which will be transformed to the proper JSON by the method.
 
 An update_hash looks like this:
 
-    { field => value, field2 => value2, ...}
+    { field1 => value, field2 => value2, ...}
 
 For example:
 
@@ -118,9 +122,8 @@ Note that even though JIRA requires JSON, JIRA::Client::Automated will
 helpfully translate it to and from regular hashes for you. You only pass hashes
 to JIRA::Client::Automated, not direct JSON.
 
-But, since you aren't going to read the documentation, I recommend connecting
-to your JIRA server and calling L</"get_issue"> with a key you know exists and
-then dump the result. That'll get you started.
+I recommend connecting to your JIRA server and calling L</"get_issue"> with a
+key you know exists and then dump the result. That'll get you started.
 
 =head1 METHODS
 
@@ -156,7 +159,7 @@ Password for that user
 =back
 
 All three parameters are required. JIRA::Client::Automated must connect to the
-JIRA instance using I<some> username and password. I recommend setting up a
+JIRA instance using I<some> username and password. You may want to set up a
 special "auto" or "batch" username to use just for use by scripts.
 
 If you are using Google Account integration, the username and password to use
@@ -212,7 +215,10 @@ Returns the L<LWP::UserAgent> object used to connect to the JIRA instance.
 Typically used to setup proxies or make other customizations to the UserAgent.
 For example:
 
-    $jira->ua()->env_proxy();
+    my $ua = $jira->ua();
+    $ua->env_proxy();
+    $ua->ssl_opts(...);
+    $ua->conn_cache( LWP::ConnCache->new() );
 
 =cut
 
@@ -302,8 +308,16 @@ sub _perform_request {
 
 Creating a new issue, story, task, subtask, etc.
 
-Returns a hash containing the information about the new issue or dies if there
-is an error. See L</"JIRA ISSUE HASH FORMAT"> for details of the hash.
+Returns a hash containing only the basic information about the new issue, or
+dies if there is an error. The hash looks like:
+
+    {
+        id => 24066,
+        key => "TEST-57",
+        self => "https://example.atlassian.net/rest/api/latest/issue/24066"
+    }
+
+See also L<https://developer.atlassian.com/display/JIRADEV/JIRA+REST+API+Example+-+Create+Issue>
 
 =cut
 
@@ -362,8 +376,7 @@ sub create_issue {
 Creating a subtask. If your JIRA instance does not call subtasks "Sub-task" or
 "sub-task", then you will need to pass in your subtask type.
 
-Returns a hash containing the information about the new issue or dies if there
-is an error. See L</"JIRA ISSUE HASH FORMAT"> for details of the hash.
+This method calls L</create> and return the same hash reference that it does.
 
 =cut
 
@@ -413,11 +426,12 @@ sub update_issue {
     return $key;
 }
 
+
 =head2 get_issue
 
     my $issue = $jira->get_issue($key);
 
-You can get the details for any issue, given its key. This call returns a hash
+Returns details for any issue, given its key. This call returns a hash
 containing the information for the issue in JIRA's format. See L</"JIRA ISSUE
 HASH FORMAT"> for details.
 
@@ -492,6 +506,7 @@ sub _get_transition_id {
 
 =head2 transition_issue
 
+    $jira->transition_issue($key, $transition);
     $jira->transition_issue($key, $transition, $update_hash);
 
 Transitioning an issue is what happens when you click the button that says
@@ -801,9 +816,11 @@ sub attach_file_to_issue {
 
     my $url = $jira->make_browse_url($key);
 
-A helper method to make emails containing lists of bugs easier to use. This
-just appends the key to the URL for the JIRA server so that you can click on it
-and go directly to that issue.
+A helper method to return the "C<.../browse/$key>" url for the issue.
+It's handy to make emails containing lists of bugs easier to create.
+
+This just appends the key to the URL for the JIRA server so that you can click
+on it and go directly to that issue.
 
 =cut
 
