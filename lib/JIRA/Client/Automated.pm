@@ -1,8 +1,8 @@
 package JIRA::Client::Automated;
 
-use 5.010;
 use strict;
 use warnings;
+use 5.010;
 
 
 =head1 NAME
@@ -524,10 +524,11 @@ sub _get_transition_id {
     my $tran = (grep { defined } @trans)[0]; # use the first defined one
 
     if (not defined $tran) {
-        my $r_names = join ", ", map { "'$_'" } @names;
-        my $t_names = join ", ", map { "'$_'" } sort keys %trans_names;
-        my $s_names = join ", ", map { "'$_'" } sort keys %status_names;
-        croak "$key has no transition or status called $r_names (available transitions: $t_names; status: $s_names)";
+        my @trans2status = map { "'$_->{name}' (to '$_->{to}{name}')" } @$transitions;
+        croak sprintf "%s has no transition or reachable status called %s (available transitions: %s)",
+            $key,
+            join(", ", map { "'$_'" } @names),
+            join(", ", sort @trans2status) || '<none>';
     }
 
     return $tran->{id} unless wantarray;
