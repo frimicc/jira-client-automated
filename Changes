@@ -1,4 +1,13 @@
 {{$NEXT}}
+    Added support for custom fields in create_issue().
+    Changed to allow multiple potential transitions in transition_issue().
+    Made error reporting more informative.
+    Added new trace() method for even more debugging.
+    Refactored all requests to use a single internal request method.
+    Extended and unified handling of update hashes.
+    Formatting fixes in POD.
+    (Patches provided by Tim Bunce <timb@cpan.org>.)
+
 
 1.05      2014-03-31 19:24:19-07:00 America/Los_Angeles
     Added create_subtask() method to create subtasks easily.

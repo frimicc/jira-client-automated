@@ -1,9 +1,8 @@
-package JIRA::Client::Automated;
-
 use strict;
 use warnings;
 use 5.010;
 
+package JIRA::Client::Automated;
 
 =head1 NAME
 
@@ -916,6 +915,12 @@ Michael Friedman <frimicc@cpan.org>
 =head1 CREDITS
 
 Thanks very much to:
+
+=over 4
+
+=item Tim Bunce <timb@cpan.org>
+
+=back
 
 =over 4
 
