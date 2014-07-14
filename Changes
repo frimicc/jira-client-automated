@@ -1,4 +1,6 @@
 {{$NEXT}}
+
+1.1       2014-07-13 19:04:36-07:00 America/Los_Angeles
     Added support for custom fields in create_issue().
     Changed to allow multiple potential transitions in transition_issue().
     Made error reporting more informative.
