@@ -43,10 +43,9 @@ END_SKIP_TEXT
     # check search that returns no matches
     @issues = $jira->all_search_results('createdDate = "1971-01-01"', 10);
     is @issues, 0, 'all_search_results with no results';
-    throws_ok {
-        @issues = $jira->all_search_results('KEY = NONESUCH-999999', 10);
-    }
-    qr/does not exist/, 'all_search_results with invalid key';
+    
+    @issues = $jira->all_search_results('KEY = NONESUCH-999999', 10);
+    is @issues, 0, 'all_search_results with invalid key';
 
     # --- read-only tests first
 
