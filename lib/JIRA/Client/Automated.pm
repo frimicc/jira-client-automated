@@ -57,6 +57,9 @@ JIRA::Client::Automated - A JIRA REST Client for automated scripts
     $jira->close_issue($key, $resolve, $comment); # resolve is the resolution value
     $jira->delete_issue($key);
 
+    $jira->add_issue_wathchers($key, $watcher1, ......);
+    $jira->add_issue_labels($key, $label1, ......);
+
 
 =head1 DESCRIPTION
 
@@ -200,7 +203,7 @@ sub new {
     $self->{_ua} = LWP::UserAgent->new();
 
     # cached JSON object for handling conversions
-    $self->{_json} = JSON->new->utf8();
+    $self->{_json} = JSON->new->utf8()->allow_nonref;
 
     return $self;
 }
@@ -519,7 +522,7 @@ sub _get_transition_id {
     my %status_names = map { $_->{to}{name} => $_ } @$transitions;
 
     my @names = (ref $t_name) ? @$t_name : ($t_name);
-    my @trans = map { $trans_names{$_} // $status_names{$_} } @names;
+    my @trans = map { $trans_names{$_} // $status_names{$_} } @names; # // is incompatible with perl <= 5.8
     my $tran = (grep { defined } @trans)[0]; # use the first defined one
 
     if (not defined $tran) {
@@ -644,7 +647,7 @@ This method is a wrapper for L</transition_issue>.
 sub close_issue {
     my ($self, $key, $resolve, $comment, $update_hash) = @_;
 
-    $comment //= 'Issue closed by script';
+    $comment //= 'Issue closed by script'; # // is incompatible with perl <= 5.8
 
     $update_hash ||= {};
 
@@ -714,7 +717,7 @@ sub create_comment {
 
 =head2 search_issues
 
-    my @search_results = $jira->search_issues($jql, 1, 100);
+    my @search_results = $jira->search_issues($jql, 1, 100, $fields);
 
 You've used JQL before, when you did an "Advanced Search" in the JIRA web
 interface. That's the only way to search via the REST API.
@@ -722,6 +725,8 @@ interface. That's the only way to search via the REST API.
 This is a paged method. Pass in the starting result number and number of
 results per page and it will return issues a page at a time. If you know you
 want all of the results, you can use L</"all_search_results"> instead.
+
+Optional parameter $fields is the arrayref containing the list of fields to be returned. 
 
 This method returns a hashref containing up to five values:
 
@@ -772,13 +777,14 @@ For example, to page through all results C<$max> at a time:
 # Note: if $max is > 1000 (set by jira.search.views.default.max in
 # http://jira.example.com/secure/admin/ViewSystemInfo.jspa) then it'll be truncated to 1000 anyway.
 sub search_issues {
-    my ($self, $jql, $start, $max) = @_;
+    my ($self, $jql, $start, $max, $fields) = @_;
 
+	$fields ||= ['*navigable'];
     my $query = {
         jql        => $jql,
         startAt    => $start,
         maxResults => $max,
-        fields     => ['*navigable'],
+        fields     => $fields,
     };
 
     my $query_json = $self->{_json}->encode($query);
@@ -826,7 +832,7 @@ sub all_search_results {
     my ($self, $jql, $max) = @_;
 
     my $start = 0;
-    $max //= 100; # is a param for testing
+    $max //= 100; # is a param for testing ; // is incompatible with perl <= 5.8
     my $total = 0;
     my (@all_results, @issues, $results);
 
@@ -841,6 +847,22 @@ sub all_search_results {
     } until (scalar(@issues) < $max);
 
     return @all_results;
+}
+
+=head2 get_issue_comments
+
+    $jira->get_issue_comments($key);
+
+Returns arryref of all comments to the given issue.
+
+=cut
+
+sub  get_issue_comments { 
+    my ($self, $key) = @_;
+    my $uri = "$self->{auth_url}issue/$key/comment";
+    my $request = GET $uri;
+    my $response = $self->_perform_request($request);
+    return $self->{_json}->decode($response->decoded_content());
 }
 
 
@@ -892,6 +914,106 @@ sub make_browse_url {
     return $self->{url} . 'browse/' . $key;
 }
 
+=head2 get_link_types 
+
+    my $all_link_types = $jira->get_link_types();
+
+Get the arrayref of all possible link types.
+
+=cut
+
+sub get_link_types { 
+    my ($self) = @_;
+	
+    my $uri = "$self->{auth_url}issueLinkType";
+    my $request = GET $uri;
+    my $response = $self->_perform_request($request);
+
+    return $self->{_json}->decode($response->decoded_content());
+}
+
+=head2 link_issues 
+
+    $jira->link_issues($from, $to, $type);
+
+Establish a link of type $type from issue $from to issue $to .
+Returns undef is success; structure containing error messages othewise.
+
+=cut
+
+
+sub link_issues {    
+    my ($self, $from, $to, $type) = @_;
+
+    my $uri = "$self->{auth_url}issueLink/";
+    my $link = { 
+        inwardIssue   => { key  => $to   },
+        outwardIssue  => { key  => $from },
+        type          => { name => $type }, 
+    };
+
+    my $link_json = $self->{_json}->encode($link);
+
+    my $request = POST $uri,
+      Content_Type        => 'application/json',
+      Content             => $link_json;
+
+    my $response = $self->_perform_request($request);
+
+    if($response->code != 201) { 
+        return $self->{_json}->decode($response->decoded_content());
+    }
+    return undef;
+}
+
+=head2 add_issue_tags
+
+    $jira->add_issue_tags($issue_key, @tags);
+
+Adds one more more tags to the specified issue.
+
+=cut
+
+
+sub add_issue_labels { 
+    my ($self, $issue_key, @tags) = @_;
+    $self->update_issue($issue_key,  {}, { labels => [ map {{ add => $_ }} @tags ] } );	
+}
+
+=head2 add_issue_tags
+
+    $jira->remove_issue_tags($issue_key, @tags);
+
+Removes one more more tags from the specified issue.
+
+=cut
+
+sub remove_issue_labels { 
+    my ($self, $issue_key, @tags) = @_;
+    $self->update_issue($issue_key,  {}, { labels => [ map {{ remove => $_ }} @tags ] } );	
+}
+
+=head2 add_issue_watchers 
+
+    $jira->add_issue_watcher($key, @watchers);
+
+Adds watchers to the specified issue. Returns undef if success; otherwise returns a structure containing error message.
+
+=cut
+sub add_issue_watchers { 
+    my ($self, $key, @watchers) = @_;
+    my $uri = "$self->{auth_url}issue/$key/watchers";
+    foreach my $w (@watchers) { 
+        my $request = POST $uri,
+            Content_Type    => 'application/json',
+            Content         => $self->{_json}->encode($w);
+        my $response = $self->_perform_request($request);
+        if($response->code != 204) { 
+              return $self->{_json}->decode($response->decoded_content());
+        }
+    }
+    return undef;
+}
 
 =head1 FAQ
 
