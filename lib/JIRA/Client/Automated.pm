@@ -57,7 +57,7 @@ JIRA::Client::Automated - A JIRA REST Client for automated scripts
     $jira->close_issue($key, $resolve, $comment); # resolve is the resolution value
     $jira->delete_issue($key);
 
-    $jira->add_issue_wathchers($key, $watcher1, ......);
+    $jira->add_issue_watchers($key, $watcher1, ......);
     $jira->add_issue_labels($key, $label1, ......);
 
 
@@ -966,40 +966,41 @@ sub link_issues {
     return undef;
 }
 
-=head2 add_issue_tags
+=head2 add_issue_labels
 
-    $jira->add_issue_tags($issue_key, @tags);
+    $jira->add_issue_labels($issue_key, @labels);
 
-Adds one more more tags to the specified issue.
+Adds one more more labels to the specified issue.
 
 =cut
 
 
 sub add_issue_labels { 
-    my ($self, $issue_key, @tags) = @_;
-    $self->update_issue($issue_key,  {}, { labels => [ map {{ add => $_ }} @tags ] } );	
+    my ($self, $issue_key, @labels) = @_;
+    $self->update_issue($issue_key,  {}, { labels => [ map {{ add => $_ }} @labels ] } );	
 }
 
-=head2 add_issue_tags
+=head2 remove_issue_labels
 
-    $jira->remove_issue_tags($issue_key, @tags);
+    $jira->remove_issue_labels($issue_key, @labels);
 
-Removes one more more tags from the specified issue.
+Removes one more more labels from the specified issue.
 
 =cut
 
 sub remove_issue_labels { 
-    my ($self, $issue_key, @tags) = @_;
-    $self->update_issue($issue_key,  {}, { labels => [ map {{ remove => $_ }} @tags ] } );	
+    my ($self, $issue_key, @labels) = @_;
+    $self->update_issue($issue_key,  {}, { labels => [ map {{ remove => $_ }} @labels ] } );	
 }
 
 =head2 add_issue_watchers 
 
-    $jira->add_issue_watcher($key, @watchers);
+    $jira->add_issue_watchers($key, @watchers);
 
 Adds watchers to the specified issue. Returns undef if success; otherwise returns a structure containing error message.
 
 =cut
+
 sub add_issue_watchers { 
     my ($self, $key, @watchers) = @_;
     my $uri = "$self->{auth_url}issue/$key/watchers";
