@@ -32,7 +32,7 @@ END_SKIP_TEXT
     skip $skip_text, 1 if (!($jira_server && $jira_project && $jira_user && $jira_password));
 
     my $JCA = 'JIRA::Client::Automated';
-    my ($jira, $issue, $key, @issues);
+    my ($jira, $issue, $key, @issues, $link_types);
 
     # Create new JCA object
     ok($jira = JIRA::Client::Automated->new($jira_server, $jira_user, $jira_password), 'new');
@@ -47,6 +47,9 @@ END_SKIP_TEXT
     @issues = $jira->all_search_results('KEY = NONESUCH-999999', 10);
     is @issues, 0, 'all_search_results with invalid key';
 
+    ok($link_types = $jira->get_link_types(), 'get_link_types');
+    cmp_ok( (grep { $_->{name} eq 'Blocks' } @{$link_types->{issueLinkTypes}}), '>=', 1, 'has blocks link type');
+    
     # --- read-only tests first
 
     # Create an issue
