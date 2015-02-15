@@ -868,7 +868,6 @@ sub  get_issue_comments {
     return $comments;
 }
 
-
 =head2 attach_file_to_issue
 
     $jira->attach_file_to_issue($key, $filename);
@@ -1023,6 +1022,52 @@ sub add_issue_watchers {
     return;
 }
 
+=head2 get_issue_watchers
+
+    $jira->get_issue_watchers($key);
+
+Returns arryref of all watchers of the given issue.
+
+=cut
+
+sub  get_issue_watchers { 
+    my ($self, $key) = @_;
+    my $uri = "$self->{auth_url}issue/$key/watchers";
+    my $request = GET $uri;
+    my $response = $self->_perform_request($request);
+    my $content = $self->{_json}->decode($response->decoded_content());
+
+    # dereference to get just the watchers arrayref
+    my $watchers = $content->{watchers};
+    return $watchers;
+}
+
+=head2 assign_issue
+
+    $jira->assign_issue($key, $assignee_name);
+
+Assigns the issue to that person. Returns the key of the issue if it succeeds.
+
+=cut
+
+sub assign_issue {
+    my ($self, $key, $assignee_name) = @_;
+
+    my $assignee = {};
+    $assignee->{name} = $assignee_name;
+
+    my $issue_json = $self->{_json}->encode($assignee);
+    my $uri        = "$self->{auth_url}issue/$key/assignee";
+
+    my $request = PUT $uri,
+      Content_Type => 'application/json',
+      Content      => $issue_json;
+
+    my $response = $self->_perform_request($request);
+
+    return $key;
+}
+
 =head1 FAQ
 
 =head2 Why is there no object for a JIRA issue?
@@ -1033,13 +1078,6 @@ from batch scripts, you're never really working with just one issue at a time.
 And when you have a hundred of them, it's easier to not objectify them and just
 use JIRA::Client::Automated as a mediator. That said, if this is important to
 you, I wouldn't say no to a patch offering this option.
-
-=head2 Why is there no test for L</"add_issue_watchers">?
-
-Because I don't know what user besides the one specified in the
-I<JIRA_CLIENT_AUTOMATED_USER> environment variable is safe to use and I don't
-want to write the code to create a new user and delete it yet. If automated
-user management is important to you, feel free to send me a patch.
 
 =head1 BUGS
 
@@ -1074,6 +1112,12 @@ Thanks very much to:
 =over 4
 
 =item Ivan E. Panchenko <ivan.e.panchenko@gmail.com>
+
+=back
+
+=over 4
+
+=item José Antonio Perez Testa <japtesta@gmail.com>
 
 =back
 

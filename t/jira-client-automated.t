@@ -98,6 +98,19 @@ END_SKIP_TEXT
     is($issue->{fields}{attachment}[0]{filename}, $filename, 'attach_file_to_issue attachment');
     undef $tmp; # File::Temp unlinks the file when it goes out of scope
 
+    # NOTE: these user-based tests may not do much, if your system auto-assigns
+    # issues to the creator, but they are at least testing the API calls. 
+    # add watcher
+    my ($watchers);
+    is($jira->add_issue_watchers($key, $jira_user), undef, 'add_issue_watchers');
+    ok($watchers = $jira->get_issue_watchers($key), 'get_issue_watchers');
+    is($watchers->[0]{name}, $jira_user, 'added watcher');
+
+    # assign issue
+    ok($jira->assign_issue($key, $jira_user), 'assign_issue');
+    ok($issue = $jira->get_issue($key), 'get_issue to see assignee');
+    is($issue->{fields}{assignee}{name}, $jira_user, 'assigned issue');
+
     # Transition tests
     throws_ok {
         $jira->transition_issue($key, 'NoneSuch Foo');
