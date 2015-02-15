@@ -47,8 +47,9 @@ END_SKIP_TEXT
     @issues = $jira->all_search_results('KEY = NONESUCH-999999', 10);
     is @issues, 0, 'all_search_results with invalid key';
 
+    # save link_types for later testing
     ok($link_types = $jira->get_link_types(), 'get_link_types');
-    cmp_ok( (grep { $_->{name} eq 'Blocks' } @{$link_types->{issueLinkTypes}}), '>=', 1, 'has blocks link type');
+    cmp_ok( (grep { $_->{name} eq 'Blocks' } @$link_types), '>=', 1, 'has blocks link type');
     
     # --- read-only tests first
 
@@ -147,6 +148,15 @@ END_SKIP_TEXT
     isa_ok($subtask, 'HASH');
     ok($sub_key = $subtask->{key},            'create_subtask with type key');
     ok($subtask = $jira->get_issue($sub_key), 'get_issue subtask with type');
+
+    # Link two issues
+    is($jira->link_issues($issue->{key}, $subtask->{key}, $link_types->[0]->{name}), undef, 'link_issues');
+    ok($subtask = $jira->get_issue($sub_key), 'get_issue subtask to check link worked');
+    my $issuelink = $subtask->{fields}{issuelinks}[0];
+    is($issuelink->{type}{name}, $link_types->[0]->{name}, 'created correct type of link');
+    is($issuelink->{outwardIssue}{key}, $issue->{key}, 'linked to correct issue');
+
+    # Delete sub-task
     ok($jira->delete_issue($sub_key), 'delete_issue subtask');
 
     # Close an issue
