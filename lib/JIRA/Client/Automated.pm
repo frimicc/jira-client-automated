@@ -1000,7 +1000,7 @@ sub remove_issue_labels {
 
     $jira->add_issue_watchers($key, @watchers);
 
-Adds watchers to the specified issue. Returns undef if success; otherwise returns a structure containing error message.
+Adds watchers to the specified issue. Returns nothing if success; otherwise returns a structure containing error message.
 
 =cut
 
@@ -1029,6 +1029,13 @@ from batch scripts, you're never really working with just one issue at a time.
 And when you have a hundred of them, it's easier to not objectify them and just
 use JIRA::Client::Automated as a mediator. That said, if this is important to
 you, I wouldn't say no to a patch offering this option.
+
+=head2 Why is there no test for L</"add_issue_watchers">?
+
+Because I don't know what user besides the one specified in the
+I<JIRA_CLIENT_AUTOMATED_USER> environment variable is safe to use and I don't
+want to write the code to create a new user and delete it yet. If automated
+user management is important to you, feel free to send me a patch.
 
 =head1 BUGS
 
