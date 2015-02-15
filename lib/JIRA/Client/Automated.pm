@@ -861,7 +861,11 @@ sub  get_issue_comments {
     my $uri = "$self->{auth_url}issue/$key/comment";
     my $request = GET $uri;
     my $response = $self->_perform_request($request);
-    return $self->{_json}->decode($response->decoded_content());
+    my $content = $self->{_json}->decode($response->decoded_content());
+
+    # dereference to get just the comments arrayref
+    my $comments = $content->{comments};
+    return $comments;
 }
 
 

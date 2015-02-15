@@ -68,9 +68,10 @@ END_SKIP_TEXT
     is($issue->{fields}{labels}[0],   "Commentary",                                 'create_issue labels');
 
     # Comment on an issue
+    my ($comments);
     ok($jira->create_comment($key, "Comment from $JCA Test Script."), 'create_comment');
-    ok($issue = $jira->get_issue($key), 'get_issue to see comment');
-    is($issue->{fields}{comment}{comments}[0]{body}, "Comment from $JCA Test Script.", 'create_comment worked');
+    ok($comments = $jira->get_issue_comments($key), 'get_issue_comments');
+    is($comments->[0]{body}, "Comment from $JCA Test Script.", 'create_comment worked');
 
     # Update an issue
     ok($jira->update_issue($key, { summary => "$JCA updated" }), 'update_issue');
