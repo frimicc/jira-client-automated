@@ -808,7 +808,6 @@ sub search_issues {
 
     my $results = $self->{_json}->decode($response->decoded_content());
 
-    # TODO: make this return a hash labeling the metadata instead of just a list.
     return {
         total  => $$results{total},
         start  => $$results{startAt},
@@ -929,15 +928,19 @@ sub get_link_types {
     my $request = GET $uri;
     my $response = $self->_perform_request($request);
 
-    return $self->{_json}->decode($response->decoded_content());
+    # dereference to arrayref, for convenience later
+    my $content = $self->{_json}->decode($response->decoded_content());
+    my $link_types = $content->{issueLinkTypes};
+
+    return $link_types;
 }
 
 =head2 link_issues 
 
     $jira->link_issues($from, $to, $type);
 
-Establish a link of type $type from issue $from to issue $to .
-Returns undef is success; structure containing error messages othewise.
+Establish a link of the type named $type from issue key $from to issue key $to .
+Returns nothing on success; structure containing error messages otherwise.
 
 =cut
 
@@ -963,7 +966,7 @@ sub link_issues {
     if($response->code != 201) { 
         return $self->{_json}->decode($response->decoded_content());
     }
-    return undef;
+    return;
 }
 
 =head2 add_issue_labels
@@ -1013,7 +1016,7 @@ sub add_issue_watchers {
               return $self->{_json}->decode($response->decoded_content());
         }
     }
-    return undef;
+    return;
 }
 
 =head1 FAQ
