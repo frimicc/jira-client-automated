@@ -1071,6 +1071,11 @@ Thanks very much to:
 
 =back
 
+=over 4
+
+=item Ivan E. Panchenko <ivan.e.panchenko@gmail.com>
+
+=back
 
 =head1 COPYRIGHT AND LICENSE
 
