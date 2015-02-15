@@ -77,6 +77,14 @@ END_SKIP_TEXT
     ok($issue = $jira->get_issue($key), 'get_issue to see update');
     is($issue->{fields}{summary}, "$JCA updated", 'update_issue summary');
 
+    # Label an issue
+    ok($jira->add_issue_labels($key, 'testing'), 'add_issue_labels');
+    ok($issue = $jira->get_issue($key), 'get_issue to see add_issue_labels');
+    is(grep(m/^testing$/, @{$issue->{fields}{labels}}), 1, 'add_issue_labels worked');
+    ok($jira->remove_issue_labels($key, 'testing'), 'remove_issue_labels');
+    ok($issue = $jira->get_issue($key), 'get_issue to see remove_issue_labels');
+    is(grep(m/^testing$/, @{$issue->{fields}{labels}}), 0, 'remove _issue_labels worked');
+
     # Attach a file to an issue
     my $tmp = File::Temp->new();
     print $tmp "Attach this file to $JCA test issue $key.\n";
