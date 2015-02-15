@@ -57,6 +57,9 @@ version 1.1
     $jira->close_issue($key, $resolve, $comment); # resolve is the resolution value
     $jira->delete_issue($key);
 
+    $jira->add_issue_watchers($key, $watcher1, ......);
+    $jira->add_issue_labels($key, $label1, ......);
+
 
 =head1 DESCRIPTION
 
@@ -374,7 +377,7 @@ object, so you'll see that name often.
 
 =head2 search_issues
 
-    my @search_results = $jira->search_issues($jql, 1, 100);
+    my @search_results = $jira->search_issues($jql, 1, 100, $fields);
 
 You've used JQL before, when you did an "Advanced Search" in the JIRA web
 interface. That's the only way to search via the REST API.
@@ -382,6 +385,8 @@ interface. That's the only way to search via the REST API.
 This is a paged method. Pass in the starting result number and number of
 results per page and it will return issues a page at a time. If you know you
 want all of the results, you can use L</"all_search_results"> instead.
+
+Optional parameter $fields is the arrayref containing the list of fields to be returned. 
 
 This method returns a hashref containing up to five values:
 
@@ -433,6 +438,12 @@ You can specify the maximum number to return, but no matter what, it can't
 return more than the value of jira.search.views.default.max for your JIRA
 installation.
 
+=head2 get_issue_comments
+
+    $jira->get_issue_comments($key);
+
+Returns arryref of all comments to the given issue.
+
 =head2 attach_file_to_issue
 
     $jira->attach_file_to_issue($key, $filename);
@@ -452,6 +463,37 @@ It's handy to make emails containing lists of bugs easier to create.
 
 This just appends the key to the URL for the JIRA server so that you can click
 on it and go directly to that issue.
+
+=head2 get_link_types 
+
+    my $all_link_types = $jira->get_link_types();
+
+Get the arrayref of all possible link types.
+
+=head2 link_issues 
+
+    $jira->link_issues($from, $to, $type);
+
+Establish a link of the type named $type from issue key $from to issue key $to .
+Returns nothing on success; structure containing error messages otherwise.
+
+=head2 add_issue_labels
+
+    $jira->add_issue_labels($issue_key, @labels);
+
+Adds one more more labels to the specified issue.
+
+=head2 remove_issue_labels
+
+    $jira->remove_issue_labels($issue_key, @labels);
+
+Removes one more more labels from the specified issue.
+
+=head2 add_issue_watchers 
+
+    $jira->add_issue_watchers($key, @watchers);
+
+Adds watchers to the specified issue. Returns undef if success; otherwise returns a structure containing error message.
 
 =head1 FAQ
 
