@@ -554,6 +554,8 @@ Thanks very much to:
 
 =back
 
+=encoding utf8
+
 =over 4
 
 =item José Antonio Perez Testa <japtesta@gmail.com>

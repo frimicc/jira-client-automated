@@ -1,7 +1,6 @@
 use strict;
 use warnings;
 use 5.010;
-use utf8;
 
 package JIRA::Client::Automated;
 
@@ -1115,6 +1114,8 @@ Thanks very much to:
 =item Ivan E. Panchenko <panchenko@cpan.org>
 
 =back
+
+=encoding utf8
 
 =over 4
 
