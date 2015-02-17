@@ -1,4 +1,6 @@
 {{$NEXT}}
+
+1.2       2015-02-16 22:25:05-08:00 America/Los_Angeles
     Added option to return a different set of fields from search_issues().
     Added a new method to get issue comments.
     Added support for linking issues.
