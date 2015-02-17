@@ -5,7 +5,7 @@
     Added convenience methods for adding and removing labels.
     Added the ability to add watchers to an issue.
     Updated POD a little.
-    (Based on patches from Ivan E. Panchenko <ivan.e.panchenko@gmail.com>.)
+    (Based on patches from Ivan E. Panchenko <panchenko@cpan.org>.)
     
     Added a new method to change the assignee for an issue.
     (Patch provided by José Antonio Perez Testa <japtesta@gmail.com>.)

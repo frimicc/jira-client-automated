@@ -1111,7 +1111,7 @@ Thanks very much to:
 
 =over 4
 
-=item Ivan E. Panchenko <ivan.e.panchenko@gmail.com>
+=item Ivan E. Panchenko <panchenko@cpan.org>
 
 =back
 
