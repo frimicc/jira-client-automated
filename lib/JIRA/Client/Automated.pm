@@ -626,10 +626,13 @@ sub transition_issue {
     $jira->close_issue($key, $resolve);
     $jira->close_issue($key, $resolve, $comment);
     $jira->close_issue($key, $resolve, $comment, $update_hash);
+    $jira->close_issue($key, $resolve, $comment, $update_hash, $operation);
+
 
 Pass in the resolution reason and an optional comment to close an issue. Using
 this method requires that the issue is is a status where it can use the "Close
-Issue" transition. If not, you will get an error from the server.
+Issue" transition (or other one, specified by $operation). 
+If not, you will get an error from the server.
 
 Resolution ("Fixed", "Won't Fix", etc.) is only required if the issue hasn't
 already been resolved in an earlier transition. If you try to resolve an issue
@@ -638,6 +641,14 @@ twice, you will get an error.
 If you do not supply a comment, the default value is "Issue closed by script".
 
 The $update_hash can be used to set or edit the values of other fields.
+
+The $operation paramter can be used to specify the closing transition type. This
+can be useful when your JIRA configuration uses nonstandard or localized 
+transition and status names, e.g.
+
+	use utf8;
+	$jira->close_issue($key, $resolve, $comment, $update_hash, "Закрыть");
+
 See L</transition_issue> for more details.
 
 This method is a wrapper for L</transition_issue>.
@@ -645,9 +656,10 @@ This method is a wrapper for L</transition_issue>.
 =cut
 
 sub close_issue {
-    my ($self, $key, $resolve, $comment, $update_hash) = @_;
+    my ($self, $key, $resolve, $comment, $update_hash, $operation) = @_;
 
-    $comment //= 'Issue closed by script'; # // is incompatible with perl <= 5.8
+    $comment   //= 'Issue closed by script'; # // is incompatible with perl <= 5.8
+    $operation //=  [ 'Close Issue', 'Close', 'Closed' ];
 
     $update_hash ||= {};
 
@@ -658,7 +670,7 @@ sub close_issue {
     $update_hash->{fields}{resolution} = { name => $resolve }
         if $resolve;
 
-    return $self->transition_issue($key, [ 'Close Issue', 'Close' ], $update_hash);
+    return $self->transition_issue($key, $operation, $update_hash);
 }
 
 
