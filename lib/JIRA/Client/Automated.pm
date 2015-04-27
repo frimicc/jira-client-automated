@@ -631,7 +631,7 @@ sub transition_issue {
 
 Pass in the resolution reason and an optional comment to close an issue. Using
 this method requires that the issue is is a status where it can use the "Close
-Issue" transition (or other one, specified by $operation). 
+Issue" transition (or other one, specified by $operation).
 If not, you will get an error from the server.
 
 Resolution ("Fixed", "Won't Fix", etc.) is only required if the issue hasn't
@@ -643,11 +643,11 @@ If you do not supply a comment, the default value is "Issue closed by script".
 The $update_hash can be used to set or edit the values of other fields.
 
 The $operation paramter can be used to specify the closing transition type. This
-can be useful when your JIRA configuration uses nonstandard or localized 
+can be useful when your JIRA configuration uses nonstandard or localized
 transition and status names, e.g.
 
 	use utf8;
-	$jira->close_issue($key, $resolve, $comment, $update_hash, "Закрыть");
+	$jira->close_issue($key, $resolve, $comment, $update_hash, "Done");
 
 See L</transition_issue> for more details.
 
@@ -738,7 +738,7 @@ This is a paged method. Pass in the starting result number and number of
 results per page and it will return issues a page at a time. If you know you
 want all of the results, you can use L</"all_search_results"> instead.
 
-Optional parameter $fields is the arrayref containing the list of fields to be returned. 
+Optional parameter $fields is the arrayref containing the list of fields to be returned.
 
 This method returns a hashref containing up to five values:
 
@@ -868,7 +868,7 @@ Returns arryref of all comments to the given issue.
 
 =cut
 
-sub  get_issue_comments { 
+sub  get_issue_comments {
     my ($self, $key) = @_;
     my $uri = "$self->{auth_url}issue/$key/comment";
     my $request = GET $uri;
@@ -928,7 +928,7 @@ sub make_browse_url {
     return $self->{url} . 'browse/' . $key;
 }
 
-=head2 get_link_types 
+=head2 get_link_types
 
     my $all_link_types = $jira->get_link_types();
 
@@ -936,9 +936,9 @@ Get the arrayref of all possible link types.
 
 =cut
 
-sub get_link_types { 
+sub get_link_types {
     my ($self) = @_;
-	
+
     my $uri = "$self->{auth_url}issueLinkType";
     my $request = GET $uri;
     my $response = $self->_perform_request($request);
@@ -950,7 +950,7 @@ sub get_link_types {
     return $link_types;
 }
 
-=head2 link_issues 
+=head2 link_issues
 
     $jira->link_issues($from, $to, $type);
 
@@ -960,14 +960,14 @@ Returns nothing on success; structure containing error messages otherwise.
 =cut
 
 
-sub link_issues {    
+sub link_issues {
     my ($self, $from, $to, $type) = @_;
 
     my $uri = "$self->{auth_url}issueLink/";
-    my $link = { 
+    my $link = {
         inwardIssue   => { key  => $to   },
         outwardIssue  => { key  => $from },
-        type          => { name => $type }, 
+        type          => { name => $type },
     };
 
     my $link_json = $self->{_json}->encode($link);
@@ -978,7 +978,7 @@ sub link_issues {
 
     my $response = $self->_perform_request($request);
 
-    if($response->code != 201) { 
+    if($response->code != 201) {
         return $self->{_json}->decode($response->decoded_content());
     }
     return;
@@ -993,9 +993,9 @@ Adds one more more labels to the specified issue.
 =cut
 
 
-sub add_issue_labels { 
+sub add_issue_labels {
     my ($self, $issue_key, @labels) = @_;
-    $self->update_issue($issue_key,  {}, { labels => [ map {{ add => $_ }} @labels ] } );	
+    $self->update_issue($issue_key,  {}, { labels => [ map {{ add => $_ }} @labels ] } );
 }
 
 =head2 remove_issue_labels
@@ -1006,12 +1006,12 @@ Removes one more more labels from the specified issue.
 
 =cut
 
-sub remove_issue_labels { 
+sub remove_issue_labels {
     my ($self, $issue_key, @labels) = @_;
-    $self->update_issue($issue_key,  {}, { labels => [ map {{ remove => $_ }} @labels ] } );	
+    $self->update_issue($issue_key,  {}, { labels => [ map {{ remove => $_ }} @labels ] } );
 }
 
-=head2 add_issue_watchers 
+=head2 add_issue_watchers
 
     $jira->add_issue_watchers($key, @watchers);
 
@@ -1019,15 +1019,15 @@ Adds watchers to the specified issue. Returns nothing if success; otherwise retu
 
 =cut
 
-sub add_issue_watchers { 
+sub add_issue_watchers {
     my ($self, $key, @watchers) = @_;
     my $uri = "$self->{auth_url}issue/$key/watchers";
-    foreach my $w (@watchers) { 
+    foreach my $w (@watchers) {
         my $request = POST $uri,
             Content_Type    => 'application/json',
             Content         => $self->{_json}->encode($w);
         my $response = $self->_perform_request($request);
-        if($response->code != 204) { 
+        if($response->code != 204) {
               return $self->{_json}->decode($response->decoded_content());
         }
     }
@@ -1042,7 +1042,7 @@ Returns arryref of all watchers of the given issue.
 
 =cut
 
-sub  get_issue_watchers { 
+sub  get_issue_watchers {
     my ($self, $key) = @_;
     my $uri = "$self->{auth_url}issue/$key/watchers";
     my $request = GET $uri;

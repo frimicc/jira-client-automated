@@ -343,10 +343,13 @@ operations. For example:
     $jira->close_issue($key, $resolve);
     $jira->close_issue($key, $resolve, $comment);
     $jira->close_issue($key, $resolve, $comment, $update_hash);
+    $jira->close_issue($key, $resolve, $comment, $update_hash, $operation);
+
 
 Pass in the resolution reason and an optional comment to close an issue. Using
 this method requires that the issue is is a status where it can use the "Close
-Issue" transition. If not, you will get an error from the server.
+Issue" transition (or other one, specified by $operation).
+If not, you will get an error from the server.
 
 Resolution ("Fixed", "Won't Fix", etc.) is only required if the issue hasn't
 already been resolved in an earlier transition. If you try to resolve an issue
@@ -355,6 +358,14 @@ twice, you will get an error.
 If you do not supply a comment, the default value is "Issue closed by script".
 
 The $update_hash can be used to set or edit the values of other fields.
+
+The $operation paramter can be used to specify the closing transition type. This
+can be useful when your JIRA configuration uses nonstandard or localized
+transition and status names, e.g.
+
+	use utf8;
+	$jira->close_issue($key, $resolve, $comment, $update_hash, "Done");
+
 See L</transition_issue> for more details.
 
 This method is a wrapper for L</transition_issue>.
@@ -386,7 +397,7 @@ This is a paged method. Pass in the starting result number and number of
 results per page and it will return issues a page at a time. If you know you
 want all of the results, you can use L</"all_search_results"> instead.
 
-Optional parameter $fields is the arrayref containing the list of fields to be returned. 
+Optional parameter $fields is the arrayref containing the list of fields to be returned.
 
 This method returns a hashref containing up to five values:
 
@@ -464,13 +475,13 @@ It's handy to make emails containing lists of bugs easier to create.
 This just appends the key to the URL for the JIRA server so that you can click
 on it and go directly to that issue.
 
-=head2 get_link_types 
+=head2 get_link_types
 
     my $all_link_types = $jira->get_link_types();
 
 Get the arrayref of all possible link types.
 
-=head2 link_issues 
+=head2 link_issues
 
     $jira->link_issues($from, $to, $type);
 
@@ -489,7 +500,7 @@ Adds one more more labels to the specified issue.
 
 Removes one more more labels from the specified issue.
 
-=head2 add_issue_watchers 
+=head2 add_issue_watchers
 
     $jira->add_issue_watchers($key, @watchers);
 
