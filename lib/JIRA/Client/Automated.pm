@@ -642,7 +642,7 @@ If you do not supply a comment, the default value is "Issue closed by script".
 
 The $update_hash can be used to set or edit the values of other fields.
 
-The $operation paramter can be used to specify the closing transition type. This
+The $operation parameter can be used to specify the closing transition type. This
 can be useful when your JIRA configuration uses nonstandard or localized
 transition and status names, e.g.
 
