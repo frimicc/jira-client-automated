@@ -14,6 +14,9 @@ JIRA::Client::Automated - A JIRA REST Client for automated scripts
 
     my $jira = JIRA::Client::Automated->new($url, $user, $password);
 
+    # If your JIRA instance does not use username/password for authorization 
+    my $jira = JIRA::Client::Automated->new($url);
+
     my $jira_ua = $jira->ua(); # to add in a proxy
 
     $jira->trace(1); # enable tracing of requests and responses
@@ -160,7 +163,8 @@ Password for that user
 
 =back
 
-All three parameters are required. JIRA::Client::Automated must connect to the
+All three parameters are required if your JIRA instance uses basic
+authorization, for which JIRA::Client::Automated must connect to the
 JIRA instance using I<some> username and password. You may want to set up a
 special "auto" or "batch" username to use just for use by scripts.
 
@@ -168,13 +172,22 @@ If you are using Google Account integration, the username and password to use
 are the ones you set up at the very beginning of the registration process and
 then never used again because Google logged you in.
 
+If you have other ways of authorization, like GSSAPI based authorization, do
+not provide username or password. 
+
+    my $jira = JIRA::Client::Automated->new($url);
+
 =cut
 
 sub new {
     my ($class, $url, $user, $password) = @_;
 
-    unless (defined $url && $url && defined $user && $user && defined $password && $password) {
-        croak "Need to specify url, username, and password to access JIRA";
+    unless (defined $url && $url) {
+        croak "Need to specify url to access JIRA";
+    }
+    my $no_user_pwd = !(defined $user || defined $password);
+    unless ($no_user_pwd || defined $user && $user && defined $password && $password) {
+        croak "Need to either specify both user and password, or provide none of them";
     }
 
     unless ($url =~ m{/$}) {
@@ -265,7 +278,9 @@ sub _handle_error_response {
 sub _perform_request {
     my ($self, $request, $handlers) = @_;
 
-    $request->authorization_basic($self->{user}, $self->{password});
+    if ((defined $self->{user}) && (defined $self->{password})) {
+        $request->authorization_basic($self->{user}, $self->{password});
+    }
 
     if ($self->trace) {
         carp sprintf "request %s %s: %s",
