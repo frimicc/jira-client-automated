@@ -768,7 +768,7 @@ errors => an arrayref containing error messages
 
 For example, to page through all results C<$max> at a time:
 
-    my (@all_results, $issues);
+    my (@all_results, @issues);
     do {
         $results = $self->search_issues($jql, $start, $max);
         if ($results->{errors}) {
@@ -777,7 +777,7 @@ For example, to page through all results C<$max> at a time:
         @issues = @{$results->{issues}};
         push @all_results, @issues;
         $start += $max;
-    } until (scalar(@$issues) < $max);
+    } until (scalar(@issues) < $max);
 
 (Or just use L</"all_search_results"> instead.)
 
@@ -1135,6 +1135,12 @@ Thanks very much to:
 =over 4
 
 =item José Antonio Perez Testa <japtesta@gmail.com>
+
+=back
+
+=over 4
+
+=item Frank Schophuizen <Frank.Schophuizen@philips.com>
 
 =back
 
