@@ -66,6 +66,11 @@ END_SKIP_TEXT
     is($issue->{fields}{summary},     "$JCA Test Script",                           'create_issue summary');
     is($issue->{fields}{description}, "Created by $JCA Test Script automatically.", 'create_issue description');
     is($issue->{fields}{labels}[0],   "Commentary",                                 'create_issue labels');
+    {
+        my $browse_url = $jira->make_browse_url($key);
+        ok(($browse_url =~ m{browse/$key$} and $browse_url !~ m{rest/api}),
+            "make_browse_url");
+    }
 
     # Comment on an issue
     my ($comments);
