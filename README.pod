@@ -200,6 +200,9 @@ When tracing is enabled each request and response is logged using carp.
 
 Creating a new issue, story, task, subtask, etc.
 
+Custom fields are specified just like other fields.  They will be introspected and converted
+to the correct customfield_${id}.
+
 Returns a hash containing only the basic information about the new issue, or
 dies if there is an error. The hash looks like:
 

@@ -252,9 +252,15 @@ sub _handle_error_response {
     my ($self, $response, $request) = @_;
 
     my $msg = $response->status_line;
-    $msg .= sprintf " %s", $response->decoded_content
+    #$msg .= sprintf " %s", $response->decoded_content
+    #    if $response->decoded_content;
+    use Data::Dump qw(pp);
+    $msg .= pp($self->{_json}->decode($response->decoded_content))
         if $response->decoded_content;
-    $msg .= sprintf " (for request: %s)", $request->decoded_content
+    #$msg .= sprintf " (for request: %s)", $request->decoded_content
+    #    if $request->decoded_content;
+    $msg .= "\n\nfor request:\n";
+    $msg .= pp($self->{_json}->decode($request->decoded_content))
         if $request->decoded_content;
 
     croak sprintf "Unable to %s %s: %s",
@@ -323,10 +329,103 @@ See also L<https://developer.atlassian.com/display/JIRADEV/JIRA+REST+API+Example
 
 =cut
 
+sub _issue_type_meta {
+    my ($self, $project, $issuetype) = @_;
+
+    my $uri = "$self->{auth_url}issue/createmeta?projectKeys=${project}&expand=projects.issuetypes.fields";
+
+    my $request = GET $uri,
+      Content_Type => 'application/json';
+
+    my $response = $self->_perform_request($request);
+
+    my $meta = $self->{_json}->decode($response->decoded_content());
+    foreach my $p (@{$meta->{projects}}) {
+        if ($p->{key} eq $project) {
+            foreach my $i (@{$p->{issuetypes}}) {
+                return %{$i->{fields}} if $i->{name} eq $issuetype and exists $i->{fields};
+            }
+        }
+    }
+
+    return;
+}
+
+sub _custom_field_conversion_map {
+    my ($self, $project, $issuetype) = @_;
+
+    my %custom_field_meta = $self->_issue_type_meta($project, $issuetype);
+    my %convert = map {
+        if (/^customfield_/) {
+            $custom_field_meta{$_}->{name} => {
+                custom_field_name => $_,
+                %{$custom_field_meta{$_}},
+            }
+        } else {
+            ()
+        }
+        ;
+    } keys %custom_field_meta;
+
+    return \%convert;
+}
+
+sub _convert_custom_field_name {
+    my ($self, $project, $issuetype, $field_name) = @_;
+
+    $self->{custom_field_conversion_map}{$project}{$issuetype} ||= $self->_custom_field_conversion_map($project, $issuetype);
+
+    my $custom_field_defn = $self->{custom_field_conversion_map}{$project}{$issuetype}{$field_name};
+    return $custom_field_defn->{custom_field_name} if $custom_field_defn; # If it's a custom field...
+    return $field_name;
+}
+
+sub _convert_custom_field_value {
+    my ($self, $project, $issuetype, $field_name, $field_value) = @_;
+
+    $self->{custom_field_conversion_map}{$project}{$issuetype} ||= $self->_custom_field_conversion_map($project, $issuetype);
+
+    my $custom_field_defn = $self->{custom_field_conversion_map}{$project}{$issuetype}{$field_name};
+    if ($custom_field_defn) { # If it's a custom field...
+        my $custom_field_name = $custom_field_defn->{custom_field_name};
+
+        if (exists $custom_field_defn->{allowedValues}) {
+            my %custom_values = map { $_->{value} => $_ } @{$self->{custom_field_conversion_map}{$project}{$issuetype}{$field_name}{allowedValues}};
+            my $custom_field_id = $custom_values{$field_value}{id} or die "Cannot find custom field value for $field_name value $field_value";
+            return { id => $custom_field_id };
+        } else {
+            return $field_value;
+        }
+    } else {
+        # It's a regular field, just pass it through
+        return $field_value;
+    }
+}
+
+sub _convert_custom_fields {
+    my ($self, $project, $issuetype, $fields) = @_;
+
+    my $converted_fields;
+    while (my ($name, $value) = each %$fields) {
+        my $converted_name = $self->_convert_custom_field_name($project, $issuetype, $name);
+        my $converted_value;
+        if (ref $value eq 'ARRAY') {
+            $converted_value = [ map { $self->_convert_custom_field_value($project, $issuetype, $name, $_) } @$value ];
+        } else {
+            $converted_value = $self->_convert_custom_field_value($project, $issuetype, $name, $value);
+        }
+        $converted_fields->{$converted_name} = $converted_value;
+    }
+
+    return $converted_fields;
+}
+
 sub create {
     my ($self, $fields) = @_;
 
-    my $issue = { fields => $fields };
+    my $project = $fields->{project}{key};
+    my $issuetype = $fields->{issuetype}{name};
+    my $issue = { fields => $self->_convert_custom_fields( $project, $issuetype, $fields ) };
 
     my $issue_json = $self->{_json}->encode($issue);
     my $uri        = "$self->{auth_url}issue/";
