@@ -77,7 +77,7 @@ for it first, only creating it if it doesn't exist. If it does already exist
 you can add a comment or a new error log to that issue.
 
 =head1 WORKING WITH JIRA
-
+6
 Atlassian has made a very complete REST API for recent (> 5.0) versions of
 JIRA. By virtue of being complete it is also somewhat large and a little
 complex for the beginner. Reading their tutorials is *highly* recommended
@@ -355,42 +355,40 @@ sub _custom_field_conversion_map {
     my ($self, $project, $issuetype) = @_;
 
     my %custom_field_meta = $self->_issue_type_meta($project, $issuetype);
-    my %convert = map {
-        if (/^customfield_/) {
-            $custom_field_meta{$_}->{name} => {
-                custom_field_name => $_,
-                %{$custom_field_meta{$_}},
-            }
-        } else {
-            ()
-        }
-        ;
-    } keys %custom_field_meta;
 
-    return \%convert;
+    my %custom_field_conversion_map;
+    while (my ($cf, $meta) = each %custom_field_meta) {
+        if ($cf =~ /^customfield_/) {
+            my $english_name = $meta->{name};
+            $custom_field_conversion_map{english_to_customfield}{$english_name} = $cf;
+            $custom_field_conversion_map{customfield_to_english}{$cf} = $english_name;
+            $custom_field_conversion_map{meta}{$cf} = $meta;
+        }
+    }
+
+    return \%custom_field_conversion_map;
 }
 
-sub _convert_custom_field_name {
+sub _convert_to_custom_field_name {
     my ($self, $project, $issuetype, $field_name) = @_;
 
     $self->{custom_field_conversion_map}{$project}{$issuetype} ||= $self->_custom_field_conversion_map($project, $issuetype);
 
-    my $custom_field_defn = $self->{custom_field_conversion_map}{$project}{$issuetype}{$field_name};
-    return $custom_field_defn->{custom_field_name} if $custom_field_defn; # If it's a custom field...
-    return $field_name;
+    return $self->{custom_field_conversion_map}{$project}{$issuetype}{english_to_customfield}{$field_name} || $field_name;
 }
 
-sub _convert_custom_field_value {
+sub _convert_to_custom_field_value {
     my ($self, $project, $issuetype, $field_name, $field_value) = @_;
 
     $self->{custom_field_conversion_map}{$project}{$issuetype} ||= $self->_custom_field_conversion_map($project, $issuetype);
 
-    my $custom_field_defn = $self->{custom_field_conversion_map}{$project}{$issuetype}{$field_name};
-    if ($custom_field_defn) { # If it's a custom field...
+    my $custom_field_name = $self->{custom_field_conversion_map}{$project}{$issuetype}{english_to_customfield}{$field_name};
+    if ($custom_field_name) { # If it's a custom field...
+        my $custom_field_defn = $self->{custom_field_conversion_map}{$project}{$issuetype}{meta}{$custom_field_name};
         my $custom_field_name = $custom_field_defn->{custom_field_name};
 
         if (exists $custom_field_defn->{allowedValues}) {
-            my %custom_values = map { $_->{value} => $_ } @{$self->{custom_field_conversion_map}{$project}{$issuetype}{$field_name}{allowedValues}};
+            my %custom_values = map { $_->{value} => $_ } @{$custom_field_defn->{allowedValues}};
             my $custom_field_id = $custom_values{$field_value}{id} or die "Cannot find custom field value for $field_name value $field_value";
             return { id => $custom_field_id };
         } else {
@@ -402,19 +400,70 @@ sub _convert_custom_field_value {
     }
 }
 
-sub _convert_custom_fields {
+sub _convert_to_customfields {
     my ($self, $project, $issuetype, $fields) = @_;
 
     my $converted_fields;
     while (my ($name, $value) = each %$fields) {
-        my $converted_name = $self->_convert_custom_field_name($project, $issuetype, $name);
+        my $converted_name = $self->_convert_to_custom_field_name($project, $issuetype, $name);
         my $converted_value;
         if (ref $value eq 'ARRAY') {
-            $converted_value = [ map { $self->_convert_custom_field_value($project, $issuetype, $name, $_) } @$value ];
+            $converted_value = [ map { $self->_convert_to_custom_field_value($project, $issuetype, $name, $_) } @$value ];
         } else {
-            $converted_value = $self->_convert_custom_field_value($project, $issuetype, $name, $value);
+            $converted_value = $self->_convert_to_custom_field_value($project, $issuetype, $name, $value);
         }
         $converted_fields->{$converted_name} = $converted_value;
+    }
+
+    return $converted_fields;
+}
+
+sub _issuetype_custom_fieldlist {
+    my ($self, $project, $issuetype) = @_;
+
+    $self->{custom_field_conversion_map}{$project}{$issuetype} ||= $self->_custom_field_conversion_map($project, $issuetype);
+
+    return keys %{$self->{custom_field_conversion_map}{$project}{$issuetype}{customfield_to_english}};
+}
+
+sub _convert_from_custom_field_name {
+    my ($self, $project, $issuetype, $field_name) = @_;
+
+    $self->{custom_field_conversion_map}{$project}{$issuetype} ||= $self->_custom_field_conversion_map($project, $issuetype);
+
+    return $self->{custom_field_conversion_map}{$project}{$issuetype}{customfield_to_english}{$field_name} || $field_name;
+}
+
+sub _convert_from_customfields {
+    my ($self, $project, $issuetype, $fields) = @_;
+
+    # Built-in fields
+    my $converted_fields = { map {
+        if ($_ !~ /^customfield_/) {
+            ($_ => $fields->{$_})
+        } else {
+            ()
+        }
+    } keys %$fields };
+
+    # And the custom fields.  For some reason, JIRA seems to give me a
+    # list of *all* possible custom fields, not just ones relevant to
+    # this issuetype
+    for my $cfname ($self->_issuetype_custom_fieldlist($project, $issuetype)) {
+
+        my $english_name = $self->_convert_from_custom_field_name($project, $issuetype, $cfname);
+        if (exists $fields->{$cfname}) {
+            my $value = $fields->{$cfname};
+            my $converted_value;
+            if (ref $value eq 'ARRAY') {
+                $converted_value = [ map { $_->{value} } @$value ];
+            } else {
+                $converted_value = $value->{value};
+            }
+            $converted_fields->{$english_name} = $converted_value;
+        } else {
+            $converted_fields->{$english_name} = undef;
+        }
     }
 
     return $converted_fields;
@@ -425,7 +474,7 @@ sub create {
 
     my $project = $fields->{project}{key};
     my $issuetype = $fields->{issuetype}{name};
-    my $issue = { fields => $self->_convert_custom_fields( $project, $issuetype, $fields ) };
+    my $issue = { fields => $self->_convert_to_customfields( $project, $issuetype, $fields ) };
 
     my $issue_json = $self->{_json}->encode($issue);
     my $uri        = "$self->{auth_url}issue/";
@@ -578,6 +627,11 @@ sub get_issue {
     my $response = $self->_perform_request($request);
 
     my $new_issue = $self->{_json}->decode($response->decoded_content());
+
+    my $project = $new_issue->{fields}{project}{key};
+    my $issuetype = $new_issue->{fields}{issuetype}{name};
+    my $english_fields = $self->_convert_from_customfields( $project, $issuetype, $new_issue->{fields} );
+    $new_issue->{fields} = $english_fields;
 
     return $new_issue;
 }
