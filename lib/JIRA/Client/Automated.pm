@@ -940,7 +940,10 @@ on it and go directly to that issue.
 sub make_browse_url {
     my ($self, $key) = @_;
     # use url + browse + key to synthesize URL
-    return $self->{url} . 'browse/' . $key;
+    my $url = $self->{url};
+    $url =~ s/\/rest\/api\/.*//;
+    $url .= '/' unless $url =~ m{/$};
+    return $url . 'browse/' . $key;
 }
 
 =head2 get_link_types
