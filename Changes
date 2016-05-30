@@ -1,4 +1,6 @@
 {{$NEXT}}
+
+1.5       2016-05-30 19:09:05+00:00 UTC
     Added support for worklogs.
     (Based on a patch provided by Roy Lyons <Roy.Lyons@cmegroup.com>.)
 
