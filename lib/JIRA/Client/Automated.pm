@@ -1098,6 +1098,54 @@ sub assign_issue {
     return $key;
 }
 
+=head2 add_issue_worklog
+
+    $jira->add_issue_worklog($key, $worklog);
+
+Adds a worklog to the specified issue. Returns nothing if success; otherwise returns a structure containing error message.
+
+Sample worklog:
+{
+    "comment" => "I did some work here.",
+    "started" => "2016-05-27T02:32:26.797+0000",
+    "timeSpentSeconds" => 12000,
+}
+
+=cut
+
+sub add_issue_worklog {
+    my ($self, $key, $worklog) = @_;
+    my $uri = "$self->{auth_url}issue/$key/worklog";
+    my $request = POST $uri,
+       Content_Type    => 'application/json',
+       Content         => $self->{_json}->encode($worklog);
+    my $response = $self->_perform_request($request);
+    if($response->code != 201) {
+         return $self->{_json}->decode($response->decoded_content());
+    }
+    return;
+}
+
+=head2 get_issue_worklogs
+
+    $jira->get_issue_worklogs($key);
+
+Returns arryref of all worklogs of the given issue.
+
+=cut
+
+sub  get_issue_worklogs {
+    my ($self, $key) = @_;
+    my $uri = "$self->{auth_url}issue/$key/worklog";
+    my $request = GET $uri;
+    my $response = $self->_perform_request($request);
+    my $content = $self->{_json}->decode($response->decoded_content());
+
+    # dereference to get just the worklogs arrayref
+    my $worklogs = $content->{worklogs};
+    return $worklogs;
+}
+
 =head1 FAQ
 
 =head2 Why is there no object for a JIRA issue?
@@ -1162,6 +1210,12 @@ Thanks very much to:
 =over 4
 
 =item Zhenyi Zhou <zhenyz@cpan.org>
+
+=back
+
+=over 4
+
+=item Roy Lyons <Roy.Lyons@cmegroup.com>
 
 =back
 

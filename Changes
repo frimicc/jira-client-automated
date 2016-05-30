@@ -1,4 +1,6 @@
 {{$NEXT}}
+    Added support for worklogs.
+    (Based on a patch provided by Roy Lyons <Roy.Lyons@cmegroup.com>.)
 
 1.4       2016-05-30 17:56:25+00:00 UTC
     Added option to not use username and password, for people using GSSAPI

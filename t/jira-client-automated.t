@@ -134,6 +134,18 @@ END_SKIP_TEXT
     isnt($issue->{fields}{status}{name},
         $prev_status_name, "transition_issue status (now $issue->{fields}{status}{name})");
 
+    # test worklog
+    my $worklogs;
+    is_deeply($worklogs = $jira->get_issue_worklogs($key), [], 'get_issue_worklogs no worklogs');
+    my $sample_worklog = {
+        "comment" => "I did some work here.",
+        "started" => "2016-05-27T02:32:26.797+0000",
+        "timeSpentSeconds" => 12000,
+    };
+    is($jira->add_issue_worklog($key, $sample_worklog), undef, 'add_issue_worklog');
+    ok($worklogs = $jira->get_issue_worklogs($key), 'get_issue_worklogs with worklogs');
+    is($worklogs->[0]->{comment}, $sample_worklog->{comment}, 'got worklog we added');
+
     # Search for issues
     # complicated queries work too:
     #    my $jql
