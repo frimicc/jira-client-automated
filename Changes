@@ -1,4 +1,6 @@
 {{$NEXT}}
+
+1.4       2016-05-30 17:56:25+00:00 UTC
     Added option to not use username and password, for people using GSSAPI
     or other authentication methods.
     Allow using URLs like "http://foo.com/jira/rest/api/some_version" too.
