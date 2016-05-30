@@ -6,13 +6,16 @@ JIRA::Client::Automated - A JIRA REST Client for automated scripts
 
 =head1 VERSION
 
-version 1.3.1
+version 1.4
 
 =head1 SYNOPSIS
 
     use JIRA::Client::Automated;
 
     my $jira = JIRA::Client::Automated->new($url, $user, $password);
+
+    # If your JIRA instance does not use username/password for authorization 
+    my $jira = JIRA::Client::Automated->new($url);
 
     my $jira_ua = $jira->ua(); # to add in a proxy
 
@@ -151,13 +154,19 @@ Password for that user
 
 =back
 
-All three parameters are required. JIRA::Client::Automated must connect to the
+All three parameters are required if your JIRA instance uses basic
+authorization, for which JIRA::Client::Automated must connect to the
 JIRA instance using I<some> username and password. You may want to set up a
 special "auto" or "batch" username to use just for use by scripts.
 
 If you are using Google Account integration, the username and password to use
 are the ones you set up at the very beginning of the registration process and
 then never used again because Google logged you in.
+
+If you have other ways of authorization, like GSSAPI based authorization, do
+not provide username or password. 
+
+    my $jira = JIRA::Client::Automated->new($url);
 
 =head2 ua
 
@@ -579,9 +588,15 @@ Thanks very much to:
 
 =back
 
+=over 4
+
+=item Zhenyi Zhou <zhenyz@cpan.org>
+
+=back
+
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2014 by Polyvore, Inc.
+This software is copyright (c) 2016 by Polyvore, Inc.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
