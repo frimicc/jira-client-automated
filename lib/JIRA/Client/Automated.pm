@@ -137,6 +137,7 @@ use HTTP::Request;
 use HTTP::Request::Common qw(GET POST PUT DELETE);
 use LWP::Protocol::https;
 use Carp;
+use Data::Dump qw(pp);
 
 =head2 new
 
@@ -252,13 +253,9 @@ sub _handle_error_response {
     my ($self, $response, $request) = @_;
 
     my $msg = $response->status_line;
-    #$msg .= sprintf " %s", $response->decoded_content
-    #    if $response->decoded_content;
-    use Data::Dump qw(pp);
     $msg .= pp($self->{_json}->decode($response->decoded_content))
         if $response->decoded_content;
-    #$msg .= sprintf " (for request: %s)", $request->decoded_content
-    #    if $request->decoded_content;
+
     $msg .= "\n\nfor request:\n";
     $msg .= pp($self->{_json}->decode($request->decoded_content))
         if $request->decoded_content;
