@@ -80,7 +80,7 @@ for it first, only creating it if it doesn't exist. If it does already exist
 you can add a comment or a new error log to that issue.
 
 =head1 WORKING WITH JIRA
-
+6
 Atlassian has made a very complete REST API for recent (> 5.0) versions of
 JIRA. By virtue of being complete it is also somewhat large and a little
 complex for the beginner. Reading their tutorials is *highly* recommended
