@@ -1,4 +1,6 @@
 {{$NEXT}}
+
+1.6       2016-08-21 21:44:44+00:00 UTC
     Added translation of customfields to and from their assigned names.
     Added offline mocked tests. (Now requires JSON::XS, Test::MockModule, and Data::Dump.)
     (Patch provided by Neil Hemingway <hemingway@cpan.org>.)
