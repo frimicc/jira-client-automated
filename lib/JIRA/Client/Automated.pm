@@ -1371,7 +1371,7 @@ Thanks very much to:
 
 =over 4
 
-=item Neil Hemingway
+=item Neil Hemingway <hemingway@cpan.org>
 
 =back
 
