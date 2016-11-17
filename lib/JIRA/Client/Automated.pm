@@ -252,9 +252,10 @@ sub _handle_error_response {
     my ($self, $response, $request) = @_;
 
     my $msg = $response->status_line;
-    $msg .= sprintf " %s", $response->decoded_content
+
+    $msg .= sprintf " %s", Encode::decode('utf8',$response->decoded_content)
         if $response->decoded_content;
-    $msg .= sprintf " (for request: %s)", $request->decoded_content
+    $msg .= sprintf " (for request: %s)", Encode::decode('utf8', $request->decoded_content)
         if $request->decoded_content;
 
     croak sprintf "Unable to %s %s: %s",
