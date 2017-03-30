@@ -206,6 +206,9 @@ sub new {
     $auth_url =~ s{//}{/}g;
     $auth_url =~ s{:/}{://};
 
+    if ($auth_url =~ m|http://|) {
+        warn "URL for JIRA should use https to avoid exposing user password in Internet";
+    }
     if ($auth_url !~ m|https?://|) {
         croak "URL for JIRA must be absolute, including 'http://' or 'https://'";
     }
