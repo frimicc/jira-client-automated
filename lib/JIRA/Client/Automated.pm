@@ -14,6 +14,9 @@ JIRA::Client::Automated - A JIRA REST Client for automated scripts
 
     my $jira = JIRA::Client::Automated->new($url, $user, $password);
 
+    # If your JIRA instance does not use username/password for authorization 
+    my $jira = JIRA::Client::Automated->new($url);
+
     my $jira_ua = $jira->ua(); # to add in a proxy
 
     $jira->trace(1); # enable tracing of requests and responses
@@ -77,7 +80,7 @@ for it first, only creating it if it doesn't exist. If it does already exist
 you can add a comment or a new error log to that issue.
 
 =head1 WORKING WITH JIRA
-
+6
 Atlassian has made a very complete REST API for recent (> 5.0) versions of
 JIRA. By virtue of being complete it is also somewhat large and a little
 complex for the beginner. Reading their tutorials is *highly* recommended
@@ -137,6 +140,7 @@ use HTTP::Request;
 use HTTP::Request::Common qw(GET POST PUT DELETE);
 use LWP::Protocol::https;
 use Carp;
+use Data::Dump qw(pp);
 
 =head2 new
 
@@ -160,7 +164,8 @@ Password for that user
 
 =back
 
-All three parameters are required. JIRA::Client::Automated must connect to the
+All three parameters are required if your JIRA instance uses basic
+authorization, for which JIRA::Client::Automated must connect to the
 JIRA instance using I<some> username and password. You may want to set up a
 special "auto" or "batch" username to use just for use by scripts.
 
@@ -168,13 +173,22 @@ If you are using Google Account integration, the username and password to use
 are the ones you set up at the very beginning of the registration process and
 then never used again because Google logged you in.
 
+If you have other ways of authorization, like GSSAPI based authorization, do
+not provide username or password. 
+
+    my $jira = JIRA::Client::Automated->new($url);
+
 =cut
 
 sub new {
     my ($class, $url, $user, $password) = @_;
 
-    unless (defined $url && $url && defined $user && $user && defined $password && $password) {
-        croak "Need to specify url, username, and password to access JIRA";
+    unless (defined $url && $url) {
+        croak "Need to specify url to access JIRA";
+    }
+    my $no_user_pwd = !(defined $user || defined $password);
+    unless ($no_user_pwd || defined $user && $user && defined $password && $password) {
+        croak "Need to either specify both user and password, or provide none of them";
     }
 
     unless ($url =~ m{/$}) {
@@ -252,10 +266,11 @@ sub _handle_error_response {
     my ($self, $response, $request) = @_;
 
     my $msg = $response->status_line;
-
-    $msg .= sprintf " %s", Encode::decode('utf8',$response->decoded_content)
+    $msg .= pp($self->{_json}->decode($response->decoded_content))
         if $response->decoded_content;
-    $msg .= sprintf " (for request: %s)", Encode::decode('utf8', $request->decoded_content)
+
+    $msg .= "\n\nfor request:\n";
+    $msg .= pp($self->{_json}->decode($request->decoded_content))
         if $request->decoded_content;
 
     croak sprintf "Unable to %s %s: %s",
@@ -266,7 +281,9 @@ sub _handle_error_response {
 sub _perform_request {
     my ($self, $request, $handlers) = @_;
 
-    $request->authorization_basic($self->{user}, $self->{password});
+    if ((defined $self->{user}) && (defined $self->{password})) {
+        $request->authorization_basic($self->{user}, $self->{password});
+    }
 
     if ($self->trace) {
         carp sprintf "request %s %s: %s",
@@ -324,10 +341,152 @@ See also L<https://developer.atlassian.com/display/JIRADEV/JIRA+REST+API+Example
 
 =cut
 
+sub _issue_type_meta {
+    my ($self, $project, $issuetype) = @_;
+
+    my $uri = "$self->{auth_url}issue/createmeta?projectKeys=${project}&expand=projects.issuetypes.fields";
+
+    my $request = GET $uri,
+      Content_Type => 'application/json';
+
+    my $response = $self->_perform_request($request);
+
+    my $meta = $self->{_json}->decode($response->decoded_content());
+    foreach my $p (@{$meta->{projects}}) {
+        if ($p->{key} eq $project) {
+            foreach my $i (@{$p->{issuetypes}}) {
+                return %{$i->{fields}} if $i->{name} eq $issuetype and exists $i->{fields};
+            }
+        }
+    }
+
+    return;
+}
+
+sub _custom_field_conversion_map {
+    my ($self, $project, $issuetype) = @_;
+
+    my %custom_field_meta = $self->_issue_type_meta($project, $issuetype);
+
+    my %custom_field_conversion_map;
+    while (my ($cf, $meta) = each %custom_field_meta) {
+        if ($cf =~ /^customfield_/) {
+            my $english_name = $meta->{name};
+            $custom_field_conversion_map{english_to_customfield}{$english_name} = $cf;
+            $custom_field_conversion_map{customfield_to_english}{$cf} = $english_name;
+            $custom_field_conversion_map{meta}{$cf} = $meta;
+        }
+    }
+
+    return \%custom_field_conversion_map;
+}
+
+sub _convert_to_custom_field_name {
+    my ($self, $project, $issuetype, $field_name) = @_;
+
+    $self->{custom_field_conversion_map}{$project}{$issuetype} ||= $self->_custom_field_conversion_map($project, $issuetype);
+
+    return $self->{custom_field_conversion_map}{$project}{$issuetype}{english_to_customfield}{$field_name} || $field_name;
+}
+
+sub _convert_to_custom_field_value {
+    my ($self, $project, $issuetype, $field_name, $field_value) = @_;
+
+    $self->{custom_field_conversion_map}{$project}{$issuetype} ||= $self->_custom_field_conversion_map($project, $issuetype);
+
+    my $custom_field_name = $self->{custom_field_conversion_map}{$project}{$issuetype}{english_to_customfield}{$field_name};
+    if ($custom_field_name) { # If it's a custom field...
+        my $custom_field_defn = $self->{custom_field_conversion_map}{$project}{$issuetype}{meta}{$custom_field_name};
+        my $custom_field_name = $custom_field_defn->{custom_field_name};
+
+        if (exists $custom_field_defn->{allowedValues}) {
+            my %custom_values = map { $_->{value} => $_ } @{$custom_field_defn->{allowedValues}};
+            my $custom_field_id = $custom_values{$field_value}{id} or die "Cannot find custom field value for $field_name value $field_value";
+            return { id => $custom_field_id };
+        } else {
+            return $field_value;
+        }
+    } else {
+        # It's a regular field, just pass it through
+        return $field_value;
+    }
+}
+
+sub _convert_to_customfields {
+    my ($self, $project, $issuetype, $fields) = @_;
+
+    my $converted_fields;
+    while (my ($name, $value) = each %$fields) {
+        my $converted_name = $self->_convert_to_custom_field_name($project, $issuetype, $name);
+        my $converted_value;
+        if (ref $value eq 'ARRAY') {
+            $converted_value = [ map { $self->_convert_to_custom_field_value($project, $issuetype, $name, $_) } @$value ];
+        } else {
+            $converted_value = $self->_convert_to_custom_field_value($project, $issuetype, $name, $value);
+        }
+        $converted_fields->{$converted_name} = $converted_value;
+    }
+
+    return $converted_fields;
+}
+
+sub _issuetype_custom_fieldlist {
+    my ($self, $project, $issuetype) = @_;
+
+    $self->{custom_field_conversion_map}{$project}{$issuetype} ||= $self->_custom_field_conversion_map($project, $issuetype);
+
+    return keys %{$self->{custom_field_conversion_map}{$project}{$issuetype}{customfield_to_english}};
+}
+
+sub _convert_from_custom_field_name {
+    my ($self, $project, $issuetype, $field_name) = @_;
+
+    $self->{custom_field_conversion_map}{$project}{$issuetype} ||= $self->_custom_field_conversion_map($project, $issuetype);
+
+    return $self->{custom_field_conversion_map}{$project}{$issuetype}{customfield_to_english}{$field_name} || $field_name;
+}
+
+sub _convert_from_customfields {
+    my ($self, $project, $issuetype, $fields) = @_;
+
+    # Built-in fields
+    my $converted_fields = { map {
+        if ($_ !~ /^customfield_/) {
+            ($_ => $fields->{$_})
+        } else {
+            ()
+        }
+    } keys %$fields };
+
+    # And the custom fields.  For some reason, JIRA seems to give me a
+    # list of *all* possible custom fields, not just ones relevant to
+    # this issuetype
+    for my $cfname ($self->_issuetype_custom_fieldlist($project, $issuetype)) {
+
+        my $english_name = $self->_convert_from_custom_field_name($project, $issuetype, $cfname);
+        if (exists $fields->{$cfname}) {
+            my $value = $fields->{$cfname};
+            my $converted_value;
+            if (ref $value eq 'ARRAY') {
+                $converted_value = [ map { $_->{value} } @$value ];
+            } else {
+                $converted_value = $value->{value};
+            }
+            $converted_fields->{$english_name} = $converted_value;
+        } else {
+            $converted_fields->{$english_name} = undef;
+        }
+    }
+
+    return $converted_fields;
+}
+
 sub create {
     my ($self, $fields) = @_;
 
-    my $issue = { fields => $fields };
+    my $project = $fields->{project}{key};
+    my $issuetype = $fields->{issuetype}{name};
+    my $issue = { fields => $self->_convert_to_customfields( $project, $issuetype, $fields ) };
 
     my $issue_json = $self->{_json}->encode($issue);
     my $uri        = "$self->{auth_url}issue/";
@@ -480,6 +639,11 @@ sub get_issue {
     my $response = $self->_perform_request($request);
 
     my $new_issue = $self->{_json}->decode($response->decoded_content());
+
+    my $project = $new_issue->{fields}{project}{key};
+    my $issuetype = $new_issue->{fields}{issuetype}{name};
+    my $english_fields = $self->_convert_from_customfields( $project, $issuetype, $new_issue->{fields} );
+    $new_issue->{fields} = $english_fields;
 
     return $new_issue;
 }
@@ -926,7 +1090,10 @@ on it and go directly to that issue.
 sub make_browse_url {
     my ($self, $key) = @_;
     # use url + browse + key to synthesize URL
-    return $self->{url} . 'browse/' . $key;
+    my $url = $self->{url};
+    $url =~ s/\/rest\/api\/.*//;
+    $url .= '/' unless $url =~ m{/$};
+    return $url . 'browse/' . $key;
 }
 
 =head2 get_link_types
@@ -1081,6 +1248,54 @@ sub assign_issue {
     return $key;
 }
 
+=head2 add_issue_worklog
+
+    $jira->add_issue_worklog($key, $worklog);
+
+Adds a worklog to the specified issue. Returns nothing if success; otherwise returns a structure containing error message.
+
+Sample worklog:
+{
+    "comment" => "I did some work here.",
+    "started" => "2016-05-27T02:32:26.797+0000",
+    "timeSpentSeconds" => 12000,
+}
+
+=cut
+
+sub add_issue_worklog {
+    my ($self, $key, $worklog) = @_;
+    my $uri = "$self->{auth_url}issue/$key/worklog";
+    my $request = POST $uri,
+       Content_Type    => 'application/json',
+       Content         => $self->{_json}->encode($worklog);
+    my $response = $self->_perform_request($request);
+    if($response->code != 201) {
+         return $self->{_json}->decode($response->decoded_content());
+    }
+    return;
+}
+
+=head2 get_issue_worklogs
+
+    $jira->get_issue_worklogs($key);
+
+Returns arryref of all worklogs of the given issue.
+
+=cut
+
+sub  get_issue_worklogs {
+    my ($self, $key) = @_;
+    my $uri = "$self->{auth_url}issue/$key/worklog";
+    my $request = GET $uri;
+    my $response = $self->_perform_request($request);
+    my $content = $self->{_json}->decode($response->decoded_content());
+
+    # dereference to get just the worklogs arrayref
+    my $worklogs = $content->{worklogs};
+    return $worklogs;
+}
+
 =head1 FAQ
 
 =head2 Why is there no object for a JIRA issue?
@@ -1142,9 +1357,28 @@ Thanks very much to:
 
 =back
 
+=over 4
+
+=item Zhenyi Zhou <zhenyz@cpan.org>
+
+=back
+
+=over 4
+
+=item Roy Lyons <Roy.Lyons@cmegroup.com>
+
+=back
+
+=over 4
+
+=item Neil Hemingway <hemingway@cpan.org>
+
+=back
+
+
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2014 by Polyvore, Inc.
+This software is copyright (c) 2016 by Polyvore, Inc.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
