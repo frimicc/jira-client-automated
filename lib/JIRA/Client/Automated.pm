@@ -1296,6 +1296,24 @@ sub  get_issue_worklogs {
     return $worklogs;
 }
 
+=head2 get_fields
+
+    $jira->get_fields
+
+Returns arrayref of all fields in the system, both System and Custom
+
+=cut
+
+sub get_fields { 
+    my ($self) = @_;
+    my $uri = "$self->{auth_url}field";
+    my $request = GET $uri;
+    my $response = $self->_perform_request($request);
+    return $self->{_json}->decode($response->decoded_content());
+}
+
+
+
 =head1 FAQ
 
 =head2 Why is there no object for a JIRA issue?
