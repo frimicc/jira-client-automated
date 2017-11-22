@@ -271,7 +271,7 @@ sub _handle_error_response {
 
     $msg .= "\n\nfor request:\n";
     $msg .= pp($self->{_json}->decode($request->decoded_content))
-        if $request->decoded_content;
+        if $request->decoded_content && $request->content_type eq 'application/json';
 
     croak sprintf "Unable to %s %s: %s",
         $request->method, $request->uri->path, $msg;
@@ -617,6 +617,27 @@ sub update_issue {
     my $response = $self->_perform_request($request);
 
     return $key;
+}
+
+=head2 get_project
+
+	my $project = $jira->get_project($key);
+
+Returns project details as a hash in JIRA's format
+
+=cut
+
+sub get_project { 
+    my ($self, $key) = @_;
+    my $uri = "$self->{auth_url}project/$key";
+
+    my $request = GET $uri, Content_Type => 'application/json';
+
+    my $response = $self->_perform_request($request);
+
+    my $project = $self->{_json}->decode($response->decoded_content());
+
+    return $project;
 }
 
 
