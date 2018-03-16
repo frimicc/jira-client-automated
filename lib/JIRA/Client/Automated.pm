@@ -267,9 +267,6 @@ sub _handle_error_response {
 
     my $msg = $response->status_line;
 
-warn "resp ct=".$response->content_type ."\n";
-warn "resp body=".$response->decoded_content."\n";
-
     $msg .= pp($self->{_json}->decode($response->decoded_content))
         if $response->decoded_content  && $response->content_type eq 'application/json';
 
