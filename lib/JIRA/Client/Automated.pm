@@ -266,12 +266,13 @@ sub _handle_error_response {
     my ($self, $response, $request) = @_;
 
     my $msg = $response->status_line;
+
     $msg .= pp($self->{_json}->decode($response->decoded_content))
-        if $response->decoded_content;
+        if $response->decoded_content  && $response->content_type eq 'application/json';
 
     $msg .= "\n\nfor request:\n";
     $msg .= pp($self->{_json}->decode($request->decoded_content))
-        if $request->decoded_content;
+        if $request->decoded_content && $request->content_type eq 'application/json';
 
     croak sprintf "Unable to %s %s: %s",
         $request->method, $request->uri->path, $msg;
@@ -469,8 +470,10 @@ sub _convert_from_customfields {
             my $converted_value;
             if (ref $value eq 'ARRAY') {
                 $converted_value = [ map { $_->{value} } @$value ];
-            } else {
+            } elsif (ref $value eq 'HASH')  {
                 $converted_value = $value->{value};
+            } else {
+                $converted_value = $value;
             }
             $converted_fields->{$english_name} = $converted_value;
         } else {
@@ -617,6 +620,27 @@ sub update_issue {
     my $response = $self->_perform_request($request);
 
     return $key;
+}
+
+=head2 get_project
+
+	my $project = $jira->get_project($key);
+
+Returns project details as a hash in JIRA's format
+
+=cut
+
+sub get_project { 
+    my ($self, $key) = @_;
+    my $uri = "$self->{auth_url}project/$key";
+
+    my $request = GET $uri, Content_Type => 'application/json';
+
+    my $response = $self->_perform_request($request);
+
+    my $project = $self->{_json}->decode($response->decoded_content());
+
+    return $project;
 }
 
 
@@ -1295,6 +1319,24 @@ sub  get_issue_worklogs {
     my $worklogs = $content->{worklogs};
     return $worklogs;
 }
+
+=head2 get_fields
+
+    $jira->get_fields
+
+Returns arrayref of all fields in the system, both System and Custom
+
+=cut
+
+sub get_fields { 
+    my ($self) = @_;
+    my $uri = "$self->{auth_url}field";
+    my $request = GET $uri;
+    my $response = $self->_perform_request($request);
+    return $self->{_json}->decode($response->decoded_content());
+}
+
+
 
 =head1 FAQ
 
