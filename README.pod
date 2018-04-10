@@ -14,7 +14,7 @@ version 1.6
 
     my $jira = JIRA::Client::Automated->new($url, $user, $password);
 
-    # If your JIRA instance does not use username/password for authorization 
+    # If your JIRA instance does not use username/password for authorization
     my $jira = JIRA::Client::Automated->new($url);
 
     my $jira_ua = $jira->ua(); # to add in a proxy
@@ -164,7 +164,7 @@ are the ones you set up at the very beginning of the registration process and
 then never used again because Google logged you in.
 
 If you have other ways of authorization, like GSSAPI based authorization, do
-not provide username or password. 
+not provide username or password.
 
     my $jira = JIRA::Client::Automated->new($url);
 

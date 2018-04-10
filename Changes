@@ -1,4 +1,6 @@
 {{$NEXT}}
+    Fixed custom field conversion for non-hash fields.
+    (Patch provided by Andreas Mager <amager@barracuda.com>.)
 
 1.6       2016-08-21 21:44:44+00:00 UTC
     Added translation of customfields to and from their assigned names.

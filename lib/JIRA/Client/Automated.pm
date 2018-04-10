@@ -14,7 +14,7 @@ JIRA::Client::Automated - A JIRA REST Client for automated scripts
 
     my $jira = JIRA::Client::Automated->new($url, $user, $password);
 
-    # If your JIRA instance does not use username/password for authorization 
+    # If your JIRA instance does not use username/password for authorization
     my $jira = JIRA::Client::Automated->new($url);
 
     my $jira_ua = $jira->ua(); # to add in a proxy
@@ -174,7 +174,7 @@ are the ones you set up at the very beginning of the registration process and
 then never used again because Google logged you in.
 
 If you have other ways of authorization, like GSSAPI based authorization, do
-not provide username or password. 
+not provide username or password.
 
     my $jira = JIRA::Client::Automated->new($url);
 
@@ -468,9 +468,11 @@ sub _convert_from_customfields {
             my $value = $fields->{$cfname};
             my $converted_value;
             if (ref $value eq 'ARRAY') {
-                $converted_value = [ map { $_->{value} } @$value ];
-            } else {
+                $converted_value = [ map { ref $_ eq 'HASH' ? $_->{value} : $_ } @$value ];
+            } elsif (ref $value eq 'HASH') {
                 $converted_value = $value->{value};
+            } else {
+                $converted_value = $value;
             }
             $converted_fields->{$english_name} = $converted_value;
         } else {
@@ -1372,6 +1374,12 @@ Thanks very much to:
 =over 4
 
 =item Neil Hemingway <hemingway@cpan.org>
+
+=back
+
+=over 4
+
+=item Andreas Mager <amager@barracuda.com>
 
 =back
 
