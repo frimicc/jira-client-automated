@@ -15,4 +15,5 @@ MYMETA.yml
 nytprof.out
 pm_to_blib
 *.swp
-test-jca.sh
+bash_test_env
+JIRA-Client-Automated-*
