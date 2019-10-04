@@ -440,6 +440,20 @@ sub _convert_to_customfields {
     return $converted_fields;
 }
 
+sub _convert_update_to_customfields {
+    my ($self, $project, $issuetype, $update) = @_;
+
+    my $converted_update_verb_hash;
+    if( $update ){
+        foreach my $hkey ( keys %$update ){
+            my $ckey = $self->_convert_to_custom_field_name($project, $issuetype, $hkey);
+            $converted_update_verb_hash->{$ckey} = $update->{$hkey};
+        }
+    }
+
+    return $converted_update_verb_hash;
+}
+
 sub _issuetype_custom_fieldlist {
     my ($self, $project, $issuetype) = @_;
 
@@ -613,10 +627,14 @@ For more information see:
 
 sub update_issue {
     my ($self, $key, $field_update_hash, $update_verb_hash) = @_;
-
+    
+    my $cur_issue = $self->get_issue( $key );
+    my $project   = $cur_issue->{fields}{project}{key};
+    my $issuetype = $cur_issue->{fields}{issuetype}{name};
+    
     my $issue = {};
-    $issue->{fields} = $field_update_hash if $field_update_hash;
-    $issue->{update} = $update_verb_hash  if $update_verb_hash;
+    $issue->{fields} = $self->_convert_to_customfields($project, $issuetype, $field_update_hash) if $field_update_hash;
+    $issue->{update} = $self->_convert_update_to_customfields($project, $issuetype, $update_verb_hash)  if $update_verb_hash;
 
     my $issue_json = $self->{_json}->encode($issue);
     my $uri        = "$self->{auth_url}issue/$key";
