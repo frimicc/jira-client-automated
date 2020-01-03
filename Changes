@@ -1,4 +1,6 @@
 {{$NEXT}}
+    Added custom field support to update_issue().
+    (Patch provided by msven <https://github.com/msven>.)
 
 1.7       2018-04-10 13:54:02-07:00 America/Los_Angeles
     Fixed custom field conversion for non-hash fields.
