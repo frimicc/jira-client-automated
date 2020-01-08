@@ -6,7 +6,7 @@ JIRA::Client::Automated - A JIRA REST Client for automated scripts
 
 =head1 VERSION
 
-version 1.8.1
+version 1.9
 
 =head1 SYNOPSIS
 
