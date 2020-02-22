@@ -80,7 +80,7 @@ for it first, only creating it if it doesn't exist. If it does already exist
 you can add a comment or a new error log to that issue.
 
 =head1 WORKING WITH JIRA
-6
+
 Atlassian has made a very complete REST API for recent (> 5.0) versions of
 JIRA. By virtue of being complete it is also somewhat large and a little
 complex for the beginner. Reading their tutorials is *highly* recommended
@@ -89,7 +89,7 @@ before you start making hashes to update or transition issues.
 L<https://developer.atlassian.com/cloud/jira/platform/rest/#about>
 
 This module was designed for the JIRA 5.2.11 REST API, as of March 2013, but it
-works fine with JIRA 6.0 as well. Your mileage may vary with future versions.
+works fine with JIRA 6 and JIRA Cloud as well. Your mileage may vary with future versions.
 
 =head1 JIRA ISSUE HASH FORMAT
 
@@ -627,11 +627,11 @@ For more information see:
 
 sub update_issue {
     my ($self, $key, $field_update_hash, $update_verb_hash) = @_;
-    
+
     my $cur_issue = $self->get_issue( $key );
     my $project   = $cur_issue->{fields}{project}{key};
     my $issuetype = $cur_issue->{fields}{issuetype}{name};
-    
+
     my $issue = {};
     $issue->{fields} = $self->_convert_to_customfields($project, $issuetype, $field_update_hash) if $field_update_hash;
     $issue->{update} = $self->_convert_update_to_customfields($project, $issuetype, $update_verb_hash)  if $update_verb_hash;
@@ -1418,7 +1418,7 @@ Thanks very much to:
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2016 by Polyvore, Inc.
+This software is copyright (c) 2020 by Michael Friedman
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
