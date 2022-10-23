@@ -351,10 +351,36 @@ See also L<https://developer.atlassian.com/cloud/jira/platform/rest/#api-api-2-i
 
 =cut
 
+sub _jira_server_major_version
+{
+    my ($self) = @_;
+
+    my $uri = "$self->{auth_url}serverInfo";
+
+    my $request = GET $uri,
+      Content_Type => 'application/json';
+
+    my $response = $self->_perform_request($request);
+    my $meta = $self->{_json}->decode($response->decoded_content());
+
+    return $meta->{versionNumbers}->[0];
+}
+
 sub _issue_type_meta {
     my ($self, $project, $issuetype) = @_;
 
-    my $uri = "$self->{auth_url}issue/createmeta?projectKeys=${project}&expand=projects.issuetypes.fields";
+    my $major_version = $self->_jira_server_major_version();
+
+    my $uri;
+
+    # Use new REST API call for JIRA >= 9.x
+    #
+    if ($major_version && $major_version >= 9) {
+        $uri = "$self->{auth_url}issue/createmeta/${project}/issuetypes";
+    }
+    else {
+        $uri = "$self->{auth_url}issue/createmeta?projectKeys=${project}&expand=projects.issuetypes.fields";
+    }
 
     my $request = GET $uri,
       Content_Type => 'application/json';
